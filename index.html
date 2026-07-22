@@ -26,8 +26,9 @@
   <link rel="apple-touch-icon" sizes="144x144" href="/groviglio/icons/icon-144.png">
 
   <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="/groviglio/icons/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="/groviglio/icons/icon-96.png">
-  <link rel="shortcut icon" href="/groviglio/icons/icon-96.png">
+  <link rel="shortcut icon" href="/groviglio/icons/favicon.ico">
 
   <!-- Recovery screen styles (inline - funziona anche se CSS principale fallisce) -->
   <style>
@@ -364,16 +365,28 @@
           <!-- Legenda -->
           <div class="graph-legend">
             <div class="legend-item">
-              <div class="legend-dot" style="background:#4F7BF7"></div> Nota
+              <div class="legend-dot" style="background:#4F7BF7;border-radius:2px"></div> Nota
             </div>
             <div class="legend-item">
-              <div class="legend-dot" style="background:#F5A623"></div> Idea
+              <div class="legend-dot" style="background:#F5A623;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)"></div> Idea
             </div>
             <div class="legend-item">
-              <div class="legend-dot" style="background:#36D399"></div> Progetto
+              <div class="legend-dot" style="background:#36D399;border-radius:3px"></div> Progetto
             </div>
             <div class="legend-item">
-              <div class="legend-dot" style="background:#B57BEE"></div> Task
+              <div class="legend-dot" style="background:#B57BEE;border-radius:3px;border:1px dashed #B57BEE"></div> Task
+            </div>
+            <div style="width:1px;background:var(--border);margin:0 4px"></div>
+            <div class="legend-item">
+              <div style="width:14px;height:14px;border-radius:50%;border:3px solid #4F7BF7;background:transparent"></div> Radice
+            </div>
+            <div class="legend-item">
+              <div style="width:12px;height:2px;background:#4F7BF7"></div>
+              <span>Gerarchia</span>
+            </div>
+            <div class="legend-item">
+              <div style="width:12px;height:2px;background:#4A5278;border-top:2px dashed #4A5278"></div>
+              <span>Collegamento</span>
             </div>
           </div>
         </div>
