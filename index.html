@@ -29,6 +29,49 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/groviglio/icons/icon-96.png">
   <link rel="shortcut icon" href="/groviglio/icons/icon-96.png">
 
+  <!-- Recovery screen styles (inline - funziona anche se CSS principale fallisce) -->
+  <style>
+    #recovery-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0D0F18;
+      z-index: 99999;
+      font-family: 'Outfit', system-ui, sans-serif;
+      color: #EEF2FF;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+    #recovery-screen.visible { display: flex; }
+    .rec-icon { font-size: 2.5rem; margin-bottom: 16px; }
+    .rec-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+    .rec-sub { font-size: .82rem; color: #94A3B8; max-width: 360px; line-height: 1.6; margin-bottom: 24px; }
+    .rec-box {
+      background: #181B2A; border: 1px solid #2E3250;
+      border-radius: 14px; padding: 20px; max-width: 420px;
+      width: 100%; margin-bottom: 16px; text-align: left;
+    }
+    .rec-box-title { font-size: .7rem; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: #4F7BF7; margin-bottom: 12px; }
+    .rec-status { font-size: .75rem; color: #94A3B8; margin-bottom: 12px;
+      background: #0D0F18; border-radius: 8px; padding: 8px 12px; font-family: monospace; }
+    .rec-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 11px 20px; border-radius: 10px; border: none;
+      font-family: inherit; font-size: .85rem; font-weight: 700;
+      cursor: pointer; transition: opacity .2s; margin-bottom: 8px;
+    }
+    .rec-btn:last-child { margin-bottom: 0; }
+    .rec-btn:hover { opacity: .88; }
+    .rec-btn-primary { background: linear-gradient(135deg, #4F7BF7, #F47C3C); color: #fff; }
+    .rec-btn-secondary { background: #252A40; color: #94A3B8; border: 1px solid #2E3250; }
+    .rec-btn-safe { background: rgba(54,211,153,.12); color: #36D399; border: 1px solid rgba(54,211,153,.25); }
+    .rec-note { font-size: .68rem; color: #4A5278; max-width: 360px; line-height: 1.5; }
+  </style>
+
   <!-- CSS -->
   <link rel="stylesheet" href="/groviglio/css/app.css">
 
@@ -600,6 +643,237 @@
       gfm: true,
     });
   }
+</script>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCHERMATA RECOVERY — si attiva se i moduli ES falliscono
+     Script NON-MODULE: funziona anche quando ui.js non carica
+══════════════════════════════════════════════════════════ -->
+<div id="recovery-screen">
+  <div class="rec-icon">🦊⚠️</div>
+  <div class="rec-title">Aggiornamento in corso…</div>
+  <div class="rec-sub">
+    Groviglio sta applicando un aggiornamento e ha bisogno di ricaricarsi.
+    <strong style="color:#EEF2FF">I tuoi dati sono al sicuro</strong> — si trovano
+    ancora nel database locale del browser.
+  </div>
+
+  <div class="rec-box">
+    <div class="rec-box-title">📋 Situazione attuale</div>
+    <div class="rec-status" id="rec-status-text">Analisi in corso…</div>
+    <div id="rec-data-info" style="font-size:.75rem;color:#94A3B8;margin-bottom:14px;display:none">
+      <span id="rec-elementi-count"></span> elementi trovati nel database
+    </div>
+
+    <!-- Step 1: salva i dati prima -->
+    <button class="rec-btn rec-btn-safe" id="rec-btn-export">
+      💾 Esporta tutti i dati (consigliato)
+    </button>
+
+    <!-- Step 2: aggiorna -->
+    <button class="rec-btn rec-btn-primary" id="rec-btn-fix">
+      🔄 Applica aggiornamento e ricarica
+    </button>
+
+    <button class="rec-btn rec-btn-secondary" id="rec-btn-force">
+      ⚡ Ricarica forzata (senza ripulire cache)
+    </button>
+  </div>
+
+  <div class="rec-note">
+    ⚠️ "Applica aggiornamento" rimuove solo la cache del Service Worker,
+    <strong style="color:#EEF2FF">non cancella i tuoi dati</strong>.
+    Se vuoi essere sicuro al 100%, esporta prima.
+  </div>
+</div>
+
+<script>
+/* ── Recovery script: plain JS, nessuna dipendenza da moduli ES ── */
+(function() {
+  'use strict';
+
+  var TIMEOUT_MS = 6000; // attendi 6s prima di mostrare recovery
+  var _timer = null;
+  var _haErrore = false;
+
+  /* Intercetta errori di import ES modules */
+  window.addEventListener('error', function(e) {
+    var msg = e.message || '';
+    // Errori tipici di import rotto
+    if (
+      msg.includes('does not provide an export') ||
+      msg.includes('Failed to fetch dynamically imported') ||
+      msg.includes('Cannot find module') ||
+      msg.includes('SyntaxError') && e.filename && e.filename.includes('.js')
+    ) {
+      _haErrore = true;
+      clearTimeout(_timer);
+      setTimeout(mostraRecovery, 300);
+    }
+  }, true);
+
+  /* Se dopo TIMEOUT l'app non è partita, mostra recovery */
+  window.addEventListener('load', function() {
+    _timer = setTimeout(function() {
+      if (!window.__GROVIGLIO_READY__) {
+        mostraRecovery();
+      }
+    }, TIMEOUT_MS);
+  });
+
+  function mostraRecovery() {
+    var screen = document.getElementById('recovery-screen');
+    var statusEl = document.getElementById('rec-status-text');
+    var splash = document.getElementById('splash');
+
+    if (!screen) return;
+    if (splash) splash.style.display = 'none';
+
+    screen.classList.add('visible');
+
+    // Leggi dati da IndexedDB per mostrare il conteggio
+    leggiConteggioElementi(function(count) {
+      var infoEl = document.getElementById('rec-data-info');
+      var countEl = document.getElementById('rec-elementi-count');
+      if (count !== null && infoEl && countEl) {
+        countEl.textContent = count;
+        infoEl.style.display = '';
+      }
+    });
+
+    if (statusEl) {
+      statusEl.textContent = _haErrore
+        ? '❌ Errore modulo JS rilevato — la cache contiene una versione obsoleta.'
+        : '⏳ L\'app non ha completato l\'avvio nel tempo previsto.';
+    }
+
+    /* Wiring bottoni */
+    document.getElementById('rec-btn-export')
+      ?.addEventListener('click', esportaDatiEmergenza);
+
+    document.getElementById('rec-btn-fix')
+      ?.addEventListener('click', function() {
+        applicaFix(true);  // pulisce SW cache
+      });
+
+    document.getElementById('rec-btn-force')
+      ?.addEventListener('click', function() {
+        applicaFix(false); // solo reload forzato
+      });
+  }
+
+  /* ── Pulisce SW e ricarica ── */
+  async function applicaFix(pulisciSW) {
+    var btn = document.getElementById('rec-btn-fix');
+    if (btn) { btn.textContent = '⏳ Pulizia in corso…'; btn.disabled = true; }
+
+    try {
+      if (pulisciSW && 'serviceWorker' in navigator) {
+        // Deregistra tutti i SW
+        var regs = await navigator.serviceWorker.getRegistrations();
+        for (var reg of regs) await reg.unregister();
+
+        // Svuota tutte le cache (solo Cache API, non IndexedDB)
+        var keys = await caches.keys();
+        await Promise.all(keys.map(function(k) { return caches.delete(k); }));
+      }
+    } catch(e) {
+      console.warn('[Recovery] Errore pulizia SW:', e);
+    }
+
+    // Ricarica forzata da rete
+    window.location.reload(true);
+  }
+
+  /* ── Esporta dati da IndexedDB senza moduli ES ── */
+  function esportaDatiEmergenza() {
+    var btn = document.getElementById('rec-btn-export');
+    if (btn) { btn.textContent = '⏳ Lettura dati…'; btn.disabled = true; }
+
+    var req = indexedDB.open('GroviglioDB');
+
+    req.onsuccess = function(e) {
+      var db = e.target.result;
+      var stores = ['elementi', 'impostazioni', 'chat'];
+      var dati = { version: 'emergency-export', exportedAt: new Date().toISOString() };
+      var pending = stores.length;
+
+      stores.forEach(function(store) {
+        try {
+          var tx = db.transaction(store, 'readonly');
+          var reqAll = tx.objectStore(store).getAll();
+          reqAll.onsuccess = function(ev) {
+            dati[store] = ev.target.result || [];
+            // Rimuovi API keys per sicurezza
+            if (store === 'impostazioni') {
+              dati[store] = dati[store].filter(function(r) {
+                return !['apiKeyAnthropic','apiKeyGemini','apiKeyOpenAI'].includes(r.chiave);
+              });
+            }
+            pending--;
+            if (pending === 0) scaricaJSON(dati);
+          };
+          reqAll.onerror = function() {
+            dati[store] = [];
+            pending--;
+            if (pending === 0) scaricaJSON(dati);
+          };
+        } catch(err) {
+          dati[store] = [];
+          pending--;
+          if (pending === 0) scaricaJSON(dati);
+        }
+      });
+    };
+
+    req.onerror = function() {
+      alert('⚠️ Impossibile leggere il database. Prova ad aprire l\'app con CTRL+F5 e fai il backup dalle Impostazioni.');
+      if (btn) { btn.textContent = '💾 Esporta tutti i dati'; btn.disabled = false; }
+    };
+  }
+
+  function scaricaJSON(dati) {
+    try {
+      var json = JSON.stringify(dati, null, 2);
+      var blob = new Blob([json], { type: 'application/json' });
+      var url  = URL.createObjectURL(blob);
+      var data = new Date().toISOString().split('T')[0];
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = 'groviglio_emergency_backup_' + data + '.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+
+      var btn = document.getElementById('rec-btn-export');
+      if (btn) {
+        btn.textContent = '✅ Dati esportati — ora puoi aggiornare';
+        btn.style.background = 'rgba(54,211,153,.25)';
+      }
+    } catch(err) {
+      alert('Errore download: ' + err.message);
+    }
+  }
+
+  /* ── Conta elementi in IndexedDB ── */
+  function leggiConteggioElementi(callback) {
+    try {
+      var req = indexedDB.open('GroviglioDB');
+      req.onsuccess = function(e) {
+        try {
+          var db = e.target.result;
+          var tx = db.transaction('elementi', 'readonly');
+          var r2 = tx.objectStore('elementi').count();
+          r2.onsuccess = function() { callback(r2.result); };
+          r2.onerror   = function() { callback(null); };
+        } catch(err) { callback(null); }
+      };
+      req.onerror = function() { callback(null); };
+    } catch(err) { callback(null); }
+  }
+
+})();
 </script>
 
 <!-- App (ES Modules) -->
