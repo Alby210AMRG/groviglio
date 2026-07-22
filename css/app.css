@@ -1858,7 +1858,6 @@ body {
 }
 #update-banner.visible { transform: translateY(0); }
 #update-banner button {
-  margin-left: auto;
   background: rgba(255,255,255,.25);
   border: 1px solid rgba(255,255,255,.4);
   color: #fff;
@@ -1868,6 +1867,17 @@ body {
   font-weight: 600;
   cursor: pointer;
   font-family: var(--font-ui);
+  flex-shrink: 0;
+}
+#update-banner #update-aggiorna {
+  margin-left: auto;   /* spinge il bottone Aggiorna a destra */
+}
+#update-banner #update-chiudi {
+  background: transparent;
+  border: none;
+  font-size: 1rem;
+  padding: 0 4px;
+  opacity: .7;
 }
 
 /* Banner backup */
