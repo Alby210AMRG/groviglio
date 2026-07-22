@@ -1471,6 +1471,7 @@ async function renderImpostazioni() {
   const apiClaude     = await getImpostazione('apiKeyAnthropic', '');
   const apiGemini     = await getImpostazione('apiKeyGemini', '');
   const apiOpenAI     = await getImpostazione('apiKeyOpenAI', '');
+  const geminiModel   = await getImpostazione('geminiModel', 'gemini-3.6-flash');
   const backupFreq    = await getImpostazione('backupFrequenza', 24);
   const tema          = await getImpostazione('tema', 'dark');
   const fontSize      = await getImpostazione('fontSize', '1x');
@@ -1567,6 +1568,25 @@ async function renderImpostazioni() {
           <div class="settings-item-ctrl" style="flex:1;margin-left:10px">
             <input class="form-input" id="inp-api-gemini" type="password"
               value="${apiGemini}" placeholder="AIza…" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="settings-item">
+          <div class="settings-item-icon">🧬</div>
+          <div class="settings-item-info">
+            <div class="settings-item-label">Modello Gemini</div>
+            <div class="settings-item-desc">
+              Cambia se ricevi errori "model not available"
+            </div>
+          </div>
+          <div class="settings-item-ctrl">
+            <select class="toolbar-select" id="sel-gemini-model" style="padding:6px 12px">
+              <option value="gemini-3.6-flash"   ${geminiModel==='gemini-3.6-flash'   ?'selected':''}>gemini-3.6-flash ✨ (consigliato)</option>
+              <option value="gemini-3.5-flash"   ${geminiModel==='gemini-3.5-flash'   ?'selected':''}>gemini-3.5-flash</option>
+              <option value="gemini-3.5-flash-lite" ${geminiModel==='gemini-3.5-flash-lite'?'selected':''}>gemini-3.5-flash-lite</option>
+              <option value="gemini-3.1-flash-lite" ${geminiModel==='gemini-3.1-flash-lite'?'selected':''}>gemini-3.1-flash-lite</option>
+              <option value="gemini-2.5-flash"   ${geminiModel==='gemini-2.5-flash'   ?'selected':''}>gemini-2.5-flash (deprecato)</option>
+            </select>
           </div>
         </div>
 
@@ -1880,6 +1900,12 @@ function setupImpostazioniListeners() {
         b.classList.toggle('btn-secondary', b.dataset.fontsize !== size);
       });
     });
+  });
+
+  // Modello Gemini
+  document.getElementById('sel-gemini-model')?.addEventListener('change', async (e) => {
+    await setImpostazione('geminiModel', e.target.value);
+    mostraToast(`Modello Gemini: ${e.target.value}`, 'info');
   });
 
   // Provider AI
