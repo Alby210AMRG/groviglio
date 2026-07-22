@@ -1,5 +1,5 @@
 {
-  "version": "1.0.3",
-  "date": "2025-01-04",
-  "changelog": "Fix Gemini 2.5 Flash, test connessione AI, fix stato null"
+  "version": "1.0.4",
+  "date": "2025-01-05",
+  "changelog": "Banner aggiornamento live, log compatto con copia, toolbar Markdown, fix Gemini"
 }
