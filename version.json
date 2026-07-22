@@ -1,5 +1,5 @@
 {
-  "version": "1.0.6",
-  "date": "2025-01-07",
-  "changelog": "Fix critico: note duplicate al salvataggio"
+  "version": "1.1.0",
+  "date": "2025-01-08",
+  "changelog": "Gerarchia parentId, Vista Albero, Vista Tabella, Icon Picker, Import .md, fix Gemini"
 }
