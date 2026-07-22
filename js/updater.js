@@ -5,7 +5,7 @@
 
 import { log } from './logger.js';
 
-const VERSION_LOCALE = '1.0.6';
+const VERSION_LOCALE = '1.1.0';
 const VERSION_URL = 'https://raw.githubusercontent.com/Alby210AMRG/groviglio/main/version.json';
 
 let _bannerEl = null;
