@@ -3,7 +3,7 @@
    Fix: aggiornamento solo su consenso utente (no auto-reload)
    ============================================================ */
 
-const CACHE_NAME = 'groviglio-v1.1.3';
+const CACHE_NAME = 'groviglio-v1.1.4';
 const STATIC_ASSETS = [
   '/groviglio/',
   '/groviglio/index.html',
@@ -22,6 +22,7 @@ const STATIC_ASSETS = [
   '/groviglio/js/logger.js',
   '/groviglio/manifest.json',
   '/groviglio/icons/icon-192.png',
+  '/groviglio/icons/favicon.ico',
   '/groviglio/icons/icon-512.png',
   'https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js',
   'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
