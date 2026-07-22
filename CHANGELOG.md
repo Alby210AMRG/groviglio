@@ -68,3 +68,19 @@ Formato: `[versione] – data – descrizione`
 ### ⚠️ Breaking changes
 -
 ```
+
+---
+
+## [1.0.3] – 2025-01-04
+
+### 🐛 Fix
+- **Gemini**: aggiornato modello da `gemini-2.0-flash-exp` (deprecato) a `gemini-2.5-flash`
+- **stato "null"**: il campo stato veniva salvato come stringa `"null"` invece di `null` per le Note
+
+### ✨ Nuove funzionalità
+- **Test connessione AI**: pulsante "🔌 Testa connessioni" nelle Impostazioni → verifica Claude, Gemini, ChatGPT con risposta in tempo reale
+- Salvataggio automatico delle chiavi prima del test
+
+### 🔧 Tecnico
+- `js/ai.js`: modello Gemini aggiornato + funzioni `testaConnessioni()`, `_testaClaude()`, `_testaGemini()`, `_testaChatGPT()`
+- `js/ui.js`: integrato pulsante test con spinner e risultati colorati; fix salvataggio stato
