@@ -9,7 +9,7 @@ import {
   getImpostazione, setImpostazione, resetDB
 } from './db.js';
 import { initGrafo, aggiornaGrafo, evidenziaNodo } from './graph.js';
-import { initChat, populaListaContesto, setProvider } from './ai.js';
+import { initChat, populaListaContesto, setProvider, testaConnessioni } from './ai.js';
 import { esportaJSON, importaJSON } from './export.js';
 import { backupManuale, setFrequenzaBackup } from './backup.js';
 import { VERSIONE_LOCALE } from './updater.js';
@@ -810,7 +810,7 @@ function setupFormListeners(elOrigine, isModifica) {
       titolo,
       descrizione: document.getElementById('f-desc')?.value || '',
       priorita:    formState.priorita,
-      stato:       document.getElementById('f-stato')?.value || null,
+      stato:       (() => { const v = document.getElementById('f-stato')?.value; return (!v || v === 'null') ? null : v; })(),
       scadenza:    document.getElementById('f-scadenza')?.value || null,
       tag:         formState.tag,
       immagini:    formState.immagini,
@@ -995,8 +995,20 @@ async function renderImpostazioni() {
         </div>
 
         <div class="settings-item">
-          <div style="width:100%;display:flex;justify-content:flex-end">
+          <div style="width:100%;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+            <button class="btn btn-secondary" id="btn-testa-api">🔌 Testa connessioni</button>
             <button class="btn btn-primary" id="btn-salva-api">💾 Salva chiavi API</button>
+          </div>
+        </div>
+
+        <!-- Risultati test connessione -->
+        <div id="test-api-risultati" style="display:none">
+          <div style="padding:12px 16px;border-top:1px solid var(--border)">
+            <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;
+              letter-spacing:.08em;color:var(--text-muted);margin-bottom:10px">
+              Risultati test
+            </div>
+            <div id="test-api-lista" style="display:flex;flex-direction:column;gap:8px"></div>
           </div>
         </div>
       </div>
@@ -1153,6 +1165,67 @@ function setupImpostazioniListeners() {
     await setImpostazione('providerAI', e.target.value);
     setProvider(e.target.value);
     mostraToast(`Provider impostato: ${e.target.value}`, 'info');
+  });
+
+  // Test connessioni AI
+  document.getElementById('btn-testa-api')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-testa-api');
+    const risultatiDiv = document.getElementById('test-api-risultati');
+    const lista = document.getElementById('test-api-lista');
+    if (!btn || !lista) return;
+
+    // Prima salva le chiavi inserite
+    const claude = document.getElementById('inp-api-claude')?.value.trim();
+    const gemini = document.getElementById('inp-api-gemini')?.value.trim();
+    const openai = document.getElementById('inp-api-openai')?.value.trim();
+    if (claude) await setImpostazione('apiKeyAnthropic', claude);
+    if (gemini) await setImpostazione('apiKeyGemini', gemini);
+    if (openai) await setImpostazione('apiKeyOpenAI', openai);
+
+    btn.disabled = true;
+    btn.textContent = '🔄 Testo...';
+    risultatiDiv.style.display = '';
+
+    const PROVIDER_INFO = {
+      claude:  { label: 'Claude',  avatar: '🟠' },
+      gemini:  { label: 'Gemini',  avatar: '🔵' },
+      chatgpt: { label: 'ChatGPT', avatar: '🟢' },
+    };
+
+    // Mostra spinners
+    lista.innerHTML = Object.entries(PROVIDER_INFO).map(([k, v]) => `
+      <div id="test-row-${k}" style="display:flex;align-items:center;gap:10px;
+        padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:1rem">${v.avatar}</span>
+        <span style="font-size:.82rem;font-weight:600;color:var(--text-primary);flex:1">
+          ${v.label}
+        </span>
+        <div class="loading-spinner"></div>
+      </div>`).join('');
+
+    const risultati = await testaConnessioni();
+    log('Test connessioni AI completato', 'sistema');
+
+    // Aggiorna ogni riga con il risultato
+    for (const [provider, res] of Object.entries(risultati)) {
+      const info = PROVIDER_INFO[provider];
+      const row = document.getElementById(`test-row-${provider}`);
+      if (!row) continue;
+
+      const colore = res.ok ? 'var(--success)' : 'var(--danger)';
+      const icona  = res.ok ? '✅' : '❌';
+      row.innerHTML = `
+        <span style="font-size:1rem">${info.avatar}</span>
+        <span style="font-size:.82rem;font-weight:600;color:var(--text-primary);flex:1">
+          ${info.label}
+        </span>
+        <span style="font-size:.75rem;color:${colore};font-weight:600">
+          ${icona} ${res.msg}
+        </span>`;
+    }
+
+    btn.disabled = false;
+    btn.textContent = '🔌 Testa connessioni';
   });
 
   // Salva API keys
