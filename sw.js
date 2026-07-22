@@ -1,9 +1,9 @@
 /* ============================================================
-   Groviglio – Service Worker
-   Strategia: Cache-First per asset statici, Network-First per API
+   Groviglio – Service Worker v1.0.2
+   Fix: aggiornamento solo su consenso utente (no auto-reload)
    ============================================================ */
 
-const CACHE_NAME = 'groviglio-v1.0.1';
+const CACHE_NAME = 'groviglio-v1.0.2';
 const STATIC_ASSETS = [
   '/groviglio/',
   '/groviglio/index.html',
@@ -16,50 +16,49 @@ const STATIC_ASSETS = [
   '/groviglio/js/export.js',
   '/groviglio/js/backup.js',
   '/groviglio/js/updater.js',
+  '/groviglio/js/logger.js',
   '/groviglio/manifest.json',
   '/groviglio/icons/icon-192.png',
   '/groviglio/icons/icon-512.png',
-  // CDN esterni
   'https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js',
   'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
-  'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap'
 ];
 
 // ─── Install ───────────────────────────────────────────────
 self.addEventListener('install', event => {
-  console.log('[SW] Installazione in corso...');
+  console.log('[SW] Installazione v1.0.2...');
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      // Cache asset critici — ignora errori per CDN
-      return Promise.allSettled(
+    caches.open(CACHE_NAME).then(cache =>
+      Promise.allSettled(
         STATIC_ASSETS.map(url =>
           cache.add(url).catch(err =>
             console.warn('[SW] Cache fallita per:', url, err)
           )
         )
-      );
-    }).then(() => {
-      console.log('[SW] Installazione completata');
-      return self.skipWaiting();
+      )
+    ).then(() => {
+      console.log('[SW] Installazione completata — in attesa di attivazione');
+      // ⚠️ NON chiamare skipWaiting() qui
+      // Il nuovo SW rimane in stato "waiting" finché l'utente conferma
     })
   );
 });
 
 // ─── Activate ──────────────────────────────────────────────
 self.addEventListener('activate', event => {
-  console.log('[SW] Attivazione in corso...');
+  console.log('[SW] Attivazione...');
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
+    caches.keys().then(cacheNames =>
+      Promise.all(
         cacheNames
           .filter(name => name !== CACHE_NAME)
           .map(name => {
             console.log('[SW] Elimino vecchia cache:', name);
             return caches.delete(name);
           })
-      );
-    }).then(() => {
-      console.log('[SW] Attivazione completata');
+      )
+    ).then(() => {
+      console.log('[SW] Attivo — prendo controllo dei client');
       return self.clients.claim();
     })
   );
@@ -69,16 +68,14 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Non intercettare richieste API AI (sempre network)
+  // API AI → sempre network, non intercettare
   if (
     url.hostname === 'api.anthropic.com' ||
     url.hostname === 'generativelanguage.googleapis.com' ||
     url.hostname === 'api.openai.com'
-  ) {
-    return; // Lascia passare direttamente
-  }
+  ) return;
 
-  // version.json → Network-First (per aggiornamenti)
+  // version.json → Network-First (per rilevare aggiornamenti)
   if (url.pathname.endsWith('version.json')) {
     event.respondWith(networkFirst(event.request));
     return;
@@ -88,13 +85,10 @@ self.addEventListener('fetch', event => {
   event.respondWith(cacheFirst(event.request));
 });
 
-// ─── Strategie ─────────────────────────────────────────────
-
-/** Cache-First: usa cache, fallback su network, salva in cache */
+// ─── Strategie cache ───────────────────────────────────────
 async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) return cached;
-
   try {
     const response = await fetch(request);
     if (response.ok) {
@@ -103,7 +97,6 @@ async function cacheFirst(request) {
     }
     return response;
   } catch {
-    // Offline e non in cache
     return new Response('Offline – risorsa non disponibile', {
       status: 503,
       headers: { 'Content-Type': 'text/plain; charset=utf-8' }
@@ -111,7 +104,6 @@ async function cacheFirst(request) {
   }
 }
 
-/** Network-First: prova network, fallback su cache */
 async function networkFirst(request) {
   try {
     const response = await fetch(request);
@@ -130,8 +122,10 @@ async function networkFirst(request) {
 }
 
 // ─── Messaggi dall'app ──────────────────────────────────────
+// L'app manda SKIP_WAITING solo quando l'utente preme "Aggiorna"
 self.addEventListener('message', event => {
   if (event.data === 'SKIP_WAITING') {
+    console.log('[SW] Aggiornamento confermato dall\'utente');
     self.skipWaiting();
   }
 });
