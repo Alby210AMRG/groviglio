@@ -5,7 +5,7 @@
 
 import {
   getElementi, creaElemento, aggiornaElemento, eliminaElemento,
-  cercaElementi, filtraElementi, contaElementi,
+  cercaElementi, contaElementi, buildAlbero,
   getImpostazione, setImpostazione, resetDB
 } from './db.js';
 import { initGrafo, aggiornaGrafo, evidenziaNodo } from './graph.js';
@@ -17,7 +17,6 @@ import { log, logModifica, getLog, getUltimeModifiche, cancellaLog, logComeTesto
 import { initTreeView, renderAlbero } from './tree.js';
 import { initTableView, renderTabella } from './tableview.js';
 import { getIcona, renderIconPicker, TIPO_ICONA_DEFAULT } from './icons.js';
-import { buildAlbero } from './db.js';
 
 /* ─── Stato globale UI ────────────────────────────────────── */
 const stato = {
