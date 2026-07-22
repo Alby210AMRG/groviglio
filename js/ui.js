@@ -453,12 +453,23 @@ export function apriModalModifica(el) {
 function apriModalForm(el, isModifica) {
   const overlay = document.getElementById('modal-form');
   const body    = document.getElementById('modal-form-body');
+  const footer  = document.getElementById('modal-form-footer');
   const title   = document.getElementById('modal-form-title');
   if (!overlay || !body) return;
 
   if (title) title.textContent = isModifica ? `Modifica ${el.tipo}` : 'Nuovo elemento';
 
+  // Ricrea il corpo del form (HTML fresco)
   body.innerHTML = formHTML(el);
+
+  // ⚠️ FIX CRITICO: clona il bottone Salva per eliminare TUTTI i listener accumulati
+  // (ogni apertura del modal aggiungeva un nuovo listener → duplicazione elementi)
+  const btnVecchio = document.getElementById('btn-salva-form');
+  if (btnVecchio) {
+    const btnNuovo = btnVecchio.cloneNode(true);
+    btnVecchio.parentNode.replaceChild(btnNuovo, btnVecchio);
+  }
+
   setupFormListeners(el, isModifica);
   overlay.classList.add('open');
 }
@@ -1218,11 +1229,20 @@ function setupFormListeners(elOrigine, isModifica) {
     });
   });
 
-  // Salva
+  // Salva — guard anti-doppio-click
+  let _staSalvando = false;
   document.getElementById('btn-salva-form')?.addEventListener('click', async () => {
+    if (_staSalvando) return; // blocca click multipli
+    _staSalvando = true;
+
+    const btnSalva = document.getElementById('btn-salva-form');
+    if (btnSalva) { btnSalva.disabled = true; btnSalva.textContent = '⏳ Salvataggio…'; }
+
     const titolo = document.getElementById('f-titolo')?.value.trim();
     if (!titolo) {
       mostraToast('⚠️ Il titolo è obbligatorio', 'warning');
+      _staSalvando = false;
+      if (btnSalva) { btnSalva.disabled = false; btnSalva.textContent = '💾 Salva'; }
       return;
     }
 
@@ -1259,6 +1279,11 @@ function setupFormListeners(elOrigine, isModifica) {
       else renderElenco();
     } catch (err) {
       mostraToast('❌ Errore salvataggio: ' + err.message, 'error');
+      log(`Errore salvataggio elemento: ${err.message}`, 'errore');
+    } finally {
+      _staSalvando = false;
+      const b = document.getElementById('btn-salva-form');
+      if (b) { b.disabled = false; b.textContent = '💾 Salva'; }
     }
   });
 }
