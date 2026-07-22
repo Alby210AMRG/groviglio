@@ -1,5 +1,5 @@
 {
-  "version": "1.1.3",
-  "date": "2025-01-08",
-  "changelog": "Fix Gemini → gemini-3.6-flash, selettore modello, banner Aggiorna allineato a destra"
+  "version": "1.1.4",
+  "date": "2025-01-09",
+  "changelog": "Logo scoiattolo reale, grafo con nodi differenziati per livello e tipo"
 }
