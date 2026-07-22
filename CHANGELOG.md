@@ -105,3 +105,21 @@ Formato: `[versione] – data – descrizione`
 - `updater.js`: aggiunto listener `visibilitychange` e `online`
 - `logger.js`: render tabellare compatto, `logComeTesto()`, debounce persistenza, MAX_MOD=250
 - `ai.js`: errori catchati e loggati con `log(...,'errore')`
+
+---
+
+## [1.0.5] – 2025-01-06
+
+### ✨ Nuove funzionalità
+- **Pulsante ✨ AI nell'editor Markdown**: apre un panel inline con:
+  - Testo precompilato dall'editor (modificabile)
+  - Campo istruzioni aggiuntive opzionale (es. "aggiungi titoli", "formatta come lista")
+  - Indicatore provider attivo con avatar e stato chiave
+  - Anteprima doppia: raw Markdown + rendering visuale
+  - Azioni: ✅ Sostituisci / ➕ Aggiungi in fondo / 🔄 Rigenera / ✕ Annulla
+- Errori AI nel panel loggati in log eventi con tipo `errore`
+
+### 🔧 Tecnico
+- `js/ai.js`: `formattaInMarkdown(testo, istruzioni, provider)` + `getProviderStatus()`
+- `js/ui.js`: listener completo AI panel, gestione stati loading/error/success
+- `css/app.css`: animazione panel, stili raw/preview, responsive mobile
