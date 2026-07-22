@@ -3,7 +3,7 @@
    Fix: aggiornamento solo su consenso utente (no auto-reload)
    ============================================================ */
 
-const CACHE_NAME = 'groviglio-v1.0.5';
+const CACHE_NAME = 'groviglio-v1.0.6';
 const STATIC_ASSETS = [
   '/groviglio/',
   '/groviglio/index.html',
