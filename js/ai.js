@@ -207,6 +207,9 @@ async function chiamaGemini(testo, storico, contesto) {
   const apiKey = await getImpostazione('apiKeyGemini', '');
   if (!apiKey) throw new Error('Chiave API Gemini non configurata');
 
+  // Modello configurabile — default gemini-3.6-flash
+  const modello = await getImpostazione('geminiModel', 'gemini-3.6-flash');
+
   // Converti storico in formato Gemini
   const contents = storico.map(m => ({
     role:  m.role === 'assistant' ? 'model' : 'user',
@@ -215,7 +218,7 @@ async function chiamaGemini(testo, storico, contesto) {
   contents.push({ role: 'user', parts: [{ text: testo }] });
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${modello}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -506,7 +509,7 @@ async function _testaClaude(apiKey) {
 async function _testaGemini(apiKey) {
   try {
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -609,8 +612,9 @@ Regole FONDAMENTALI:
 
     case 'gemini': {
       if (!apiKey_gemini) throw new Error('Chiave API Gemini non configurata');
+      const modelloMd = await getImpostazione('geminiModel', 'gemini-3.6-flash');
       const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey_gemini}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelloMd}:generateContent?key=${apiKey_gemini}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
