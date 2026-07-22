@@ -84,3 +84,24 @@ Formato: `[versione] – data – descrizione`
 ### 🔧 Tecnico
 - `js/ai.js`: modello Gemini aggiornato + funzioni `testaConnessioni()`, `_testaClaude()`, `_testaGemini()`, `_testaChatGPT()`
 - `js/ui.js`: integrato pulsante test con spinner e risultati colorati; fix salvataggio stato
+
+---
+
+## [1.0.4] – 2025-01-05
+
+### 🐛 Fix
+- **Gemini**: modello aggiornato a `gemini-2.0-flash` (GA, disponibile a tutti)
+- **Errori AI**: ora tracciati nel log eventi con tipo `errore`
+
+### ✨ Nuove funzionalità
+- **Banner aggiornamento live**: usa Page Visibility API + evento `online` → il banner appare anche senza riavviare l'app, con minimo 5 min tra un check e l'altro
+- **Log eventi compatto**: tabella densa con icona, tipo colorato, messaggio, timestamp
+- **Copia log**: pulsante "📋 Copia tutto" copia il log come testo negli appunti
+- **Ultime modifiche a 250**: da 10 a 250, con badge colorati NUOVO/MOD/ELIMINATO
+- **Toolbar Markdown**: 11 bottoni (Grassetto, Corsivo, H1, H2, Lista, Lista num., Checklist, Codice, Link, Citazione, ?)
+- **Cheatsheet Markdown**: pannello collassabile con guida rapida per chi non conosce Markdown
+
+### 🔧 Tecnico
+- `updater.js`: aggiunto listener `visibilitychange` e `online`
+- `logger.js`: render tabellare compatto, `logComeTesto()`, debounce persistenza, MAX_MOD=250
+- `ai.js`: errori catchati e loggati con `log(...,'errore')`
