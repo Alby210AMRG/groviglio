@@ -1701,6 +1701,126 @@ async function renderImpostazioni() {
         </div>` : ''}
       </div>
 
+      <!-- Help -->
+      <div class="settings-section">
+        <div class="settings-section-title">❓ Come funziona Groviglio</div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:20px">
+
+          <!-- Gerarchia -->
+          <div>
+            <div style="font-size:.72rem;font-weight:700;color:var(--accent-blue);
+              text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
+              🏗️ Struttura degli elementi
+            </div>
+            <div style="background:var(--surface-2);border-radius:var(--radius-md);
+              padding:14px;font-family:var(--font-mono);font-size:.72rem;
+              color:var(--text-secondary);line-height:2">
+              <span style="color:var(--type-progetto)">📁 Macroprogetto</span>
+              <span style="color:var(--text-muted)"> (es. Lavoro, Domotica)</span><br>
+              &nbsp;&nbsp;<span style="color:var(--text-muted)">└──</span>
+              <span style="color:var(--type-progetto)">📁 Progetto</span>
+              <span style="color:var(--text-muted)"> (es. Channel Engine)</span><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+              <span style="color:var(--text-muted)">├──</span>
+              <span style="color:var(--type-nota)">📝 Nota</span>
+              <span style="color:var(--text-muted)"> (testo in Markdown)</span><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+              <span style="color:var(--text-muted)">├──</span>
+              <span style="color:var(--type-task)">✅ Task</span>
+              <span style="color:var(--text-muted)"> (da fare / in corso / fatto)</span><br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+              <span style="color:var(--text-muted)">└──</span>
+              <span style="color:var(--type-idea)">💡 Idea</span>
+              <span style="color:var(--text-muted)"> (bozza → sviluppo → realizzata)</span>
+            </div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:8px;line-height:1.6">
+              Per assegnare un genitore: apri o crea un elemento → campo <strong style="color:var(--text-primary)">Genitore</strong> → cerca e seleziona.
+            </div>
+          </div>
+
+          <!-- Viste -->
+          <div>
+            <div style="font-size:.72rem;font-weight:700;color:var(--accent-orange);
+              text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
+              👁️ Le 5 viste disponibili
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              ${[
+                ['≡', 'Elenco', 'Card filtrabili per tipo, priorità, tag. Ricerca istantanea.'],
+                ['⬡', 'Grafo', 'Mappa visiva. Archi blu = gerarchia. Tratteggiati = collegamento libero.'],
+                ['🌳', 'Albero', 'Gerarchia collassabile. Trascina per spostare gli elementi.'],
+                ['📊', 'Tabella', 'Foglio ordinabile con colonne Macro → Progetto → Elemento.'],
+                ['💬', 'Chat AI', 'Chiedi all\'AI di analizzare, riassumere o creare note.'],
+              ].map(([icon, nome, desc]) => `
+                <div style="display:flex;gap:10px;align-items:flex-start;
+                  padding:8px;background:var(--surface-2);border-radius:var(--radius-sm)">
+                  <span style="font-size:1rem;width:22px;text-align:center;flex-shrink:0">${icon}</span>
+                  <div>
+                    <div style="font-size:.78rem;font-weight:700;color:var(--text-primary)">${nome}</div>
+                    <div style="font-size:.7rem;color:var(--text-muted);margin-top:1px">${desc}</div>
+                  </div>
+                </div>`).join('')}
+            </div>
+          </div>
+
+          <!-- AI -->
+          <div>
+            <div style="font-size:.72rem;font-weight:700;color:var(--type-task);
+              text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
+              🤖 Chat AI — come si usa
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;font-size:.75rem;
+              color:var(--text-secondary);line-height:1.7">
+              <div>1️⃣ Vai in <strong style="color:var(--text-primary)">Impostazioni → AI</strong> e incolla la tua chiave API</div>
+              <div>2️⃣ Scegli il provider: <strong>Claude</strong> (Anthropic), <strong>Gemini</strong> (Google), <strong>ChatGPT</strong> (OpenAI)</div>
+              <div>3️⃣ Premi <strong style="color:var(--text-primary)">🔌 Testa connessioni</strong> per verificare</div>
+              <div>4️⃣ Apri la <strong style="color:var(--text-primary)">Chat AI</strong> → pannello 📋 per selezionare le note come contesto</div>
+              <div>5️⃣ Nell\'editor Markdown usa <strong style="color:var(--accent-orange)">✨ AI</strong> per formattare il testo</div>
+            </div>
+          </div>
+
+          <!-- Backup -->
+          <div>
+            <div style="font-size:.72rem;font-weight:700;color:var(--success);
+              text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
+              💾 Backup — cosa sapere
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              ${[
+                ['✅', 'I dati sono salvati localmente nel tuo browser (IndexedDB). Nessun server.'],
+                ['✅', 'Fai Export JSON regolarmente: Impostazioni → Esporta. È il tuo backup principale.'],
+                ['✅', 'L\'app mostra una notifica automatica per ricordartelo.'],
+                ['⚠️', 'Se cancelli i dati del browser o usi "Clear site data" perdi tutto. Esporta prima.'],
+                ['⚠️', 'Ogni dispositivo ha il suo database. Per sincronizzare usa Export → Import su altro dispositivo.'],
+              ].map(([ico, txt]) => `
+                <div style="display:flex;gap:8px;font-size:.72rem;
+                  color:var(--text-secondary);line-height:1.5">
+                  <span style="flex-shrink:0">${ico}</span>
+                  <span>${txt}</span>
+                </div>`).join('')}
+            </div>
+          </div>
+
+          <!-- Aggiornamenti -->
+          <div>
+            <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);
+              text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">
+              🔄 Aggiornamenti
+            </div>
+            <div style="font-size:.72rem;color:var(--text-secondary);line-height:1.7">
+              L\'app controlla automaticamente gli aggiornamenti da GitHub.<br>
+              Quando appare il banner <strong style="color:var(--text-primary)">🚀 Aggiornamento disponibile</strong>
+              → esporta i dati → premi <strong>Aggiorna</strong>.<br><br>
+              Se l\'app non dovesse partire dopo un aggiornamento:
+              usa il pulsante <strong style="color:var(--accent-orange)">💾 Esporta tutti i dati</strong>
+              nella schermata di recupero automatica, poi clicca <strong>Applica aggiornamento</strong>.
+              I dati non vengono mai cancellati dall\'aggiornamento.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
       <!-- Info -->
       <div class="settings-section">
         <div class="settings-section-title">ℹ️ Informazioni</div>
