@@ -13,7 +13,7 @@ import { initChat, populaListaContesto, setProvider, testaConnessioni } from './
 import { esportaJSON, importaJSON } from './export.js';
 import { backupManuale, setFrequenzaBackup } from './backup.js';
 import { VERSIONE_LOCALE } from './updater.js';
-import { log, logModifica, getLog, getUltimeModifiche, cancellaLog, renderLogHTML, renderUltimeModHTML } from './logger.js';
+import { log, logModifica, getLog, getUltimeModifiche, cancellaLog, logComeTesto, renderLogHTML, renderUltimeModHTML } from './logger.js';
 
 /* ─── Stato globale UI ────────────────────────────────────── */
 const stato = {
@@ -465,6 +465,12 @@ function apriModalForm(el, isModifica) {
 
 function formHTML(el) {
   const tagsStr = (el.tag || []).join(' ');
+  const mdBtnStyle = `
+    background:var(--surface-3);border:1px solid var(--border);
+    color:var(--text-secondary);cursor:pointer;font-family:var(--font-ui);
+    font-size:.7rem;padding:3px 7px;border-radius:4px;
+    transition:all var(--transition);line-height:1.4
+  `.replace(/\s+/g,' ');
 
   const immaginiHTML = (el.immagini || []).map((img, i) => `
     <div class="image-thumb" data-index="${i}">
@@ -504,14 +510,85 @@ function formHTML(el) {
     <!-- Descrizione (markdown) -->
     <div class="form-field">
       <div class="form-label">Descrizione</div>
+
+      <!-- Toolbar Markdown -->
+      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;
+        background:var(--surface-2);border:1px solid var(--border);
+        border-radius:var(--radius-sm) var(--radius-sm) 0 0;
+        padding:5px 8px;border-bottom:none">
+
+        <button type="button" class="md-tool-btn" data-md="**testo in grassetto**" data-sel="testo in grassetto"
+          title="Grassetto (Ctrl+B)" style="${mdBtnStyle}"><b>B</b></button>
+        <button type="button" class="md-tool-btn" data-md="_testo in corsivo_" data-sel="testo in corsivo"
+          title="Corsivo (Ctrl+I)" style="${mdBtnStyle}"><i>I</i></button>
+        <button type="button" class="md-tool-btn" data-md="# Titolo" data-sel="Titolo"
+          title="Titolo H1" style="${mdBtnStyle}">H1</button>
+        <button type="button" class="md-tool-btn" data-md="## Titolo" data-sel="Titolo"
+          title="Titolo H2" style="${mdBtnStyle}">H2</button>
+
+        <div style="width:1px;height:16px;background:var(--border);margin:0 2px"></div>
+
+        <button type="button" class="md-tool-btn" data-md="- elemento lista" data-sel="elemento lista"
+          title="Lista" style="${mdBtnStyle}">≡</button>
+        <button type="button" class="md-tool-btn" data-md="1. elemento lista" data-sel="elemento lista"
+          title="Lista numerata" style="${mdBtnStyle}">1.</button>
+        <button type="button" class="md-tool-btn" data-md="- [ ] task da fare" data-sel="task da fare"
+          title="Checklist" style="${mdBtnStyle}">☐</button>
+
+        <div style="width:1px;height:16px;background:var(--border);margin:0 2px"></div>
+
+        <button type="button" class="md-tool-btn" data-md="\`codice\`" data-sel="codice"
+          title="Codice inline" style="${mdBtnStyle}">&lt;/&gt;</button>
+        <button type="button" class="md-tool-btn" data-md="[testo](url)" data-sel="testo"
+          title="Link" style="${mdBtnStyle}">🔗</button>
+        <button type="button" class="md-tool-btn" data-md="> citazione" data-sel="citazione"
+          title="Citazione" style="${mdBtnStyle}">"</button>
+
+        <div style="flex:1"></div>
+
+        <button type="button" id="btn-md-help"
+          title="Aiuto Markdown"
+          style="${mdBtnStyle};background:var(--accent-blue-dim);color:var(--accent-blue);
+            border-color:var(--accent-blue);font-weight:700">?</button>
+      </div>
+
+      <!-- Cheatsheet collassabile -->
+      <div id="md-cheatsheet" style="
+        display:none;background:var(--surface-2);
+        border:1px solid var(--border);border-bottom:none;
+        padding:10px 12px;font-size:.72rem;
+        border-radius:0;
+      ">
+        <div style="font-weight:700;color:var(--text-secondary);margin-bottom:8px">
+          📖 Guida rapida Markdown
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;color:var(--text-muted);line-height:1.8">
+          <div><code style="color:var(--accent-blue)">**testo**</code> → <b>grassetto</b></div>
+          <div><code style="color:var(--accent-blue)">_testo_</code> → <em>corsivo</em></div>
+          <div><code style="color:var(--accent-blue)"># Titolo</code> → Titolo grande</div>
+          <div><code style="color:var(--accent-blue)">## Titolo</code> → Titolo medio</div>
+          <div><code style="color:var(--accent-blue)">- voce</code> → • lista</div>
+          <div><code style="color:var(--accent-blue)">1. voce</code> → 1. numerata</div>
+          <div><code style="color:var(--accent-blue)">- [ ] task</code> → ☐ checklist</div>
+          <div><code style="color:var(--accent-blue)">[testo](url)</code> → link</div>
+          <div><code style="color:var(--accent-blue)">\`codice\`</code> → <code>codice</code></div>
+          <div><code style="color:var(--accent-blue)">&gt; testo</code> → citazione</div>
+        </div>
+        <div style="margin-top:8px;color:var(--text-muted);font-size:.65rem">
+          💡 Usa il tab "Anteprima" per vedere il risultato prima di salvare
+        </div>
+      </div>
+
+      <!-- Tab scrivi/anteprima -->
       <div class="md-editor-tabs">
         <button class="md-tab active" data-tab="edit">Scrivi</button>
         <button class="md-tab" data-tab="preview">Anteprima</button>
       </div>
-      <textarea id="f-desc" class="form-textarea" placeholder="Descrizione in markdown…"
-        style="border-radius:0 var(--radius-sm) var(--radius-sm) var(--radius-sm)"
+      <textarea id="f-desc" class="form-textarea" placeholder="Descrivi qui… usa i bottoni sopra o scrivi direttamente in Markdown."
+        style="border-radius:0 0 var(--radius-sm) var(--radius-sm);border-top:none"
         >${escapeHTML(el.descrizione || '')}</textarea>
-      <div id="f-desc-preview" class="md-preview" style="display:none">
+      <div id="f-desc-preview" class="md-preview" style="display:none;
+        border-radius:0 0 var(--radius-sm) var(--radius-sm)">
         ${window.marked ? window.marked.parse(el.descrizione || '') : (el.descrizione || '')}
       </div>
     </div>
@@ -617,6 +694,56 @@ function setupFormListeners(elOrigine, isModifica) {
     collegamenti:[...(elOrigine.collegamenti || [])],
     priorita:    elOrigine.priorita || 'media',
   };
+
+  // ── Toolbar Markdown ────────────────────────────────────
+  document.querySelectorAll('.md-tool-btn').forEach(btn => {
+    btn.addEventListener('mouseenter', () => btn.style.background = 'var(--surface-hover)');
+    btn.addEventListener('mouseleave', () => btn.style.background = 'var(--surface-3)');
+    btn.addEventListener('click', () => {
+      const textarea = document.getElementById('f-desc');
+      if (!textarea) return;
+
+      const md  = btn.dataset.md;
+      const sel = btn.dataset.sel;
+      const start = textarea.selectionStart;
+      const end   = textarea.selectionEnd;
+      const selTxt = textarea.value.substring(start, end);
+
+      let inserimento;
+      if (selTxt && sel) {
+        // Sostituisci selezione con testo selezionato wrappato
+        inserimento = md.replace(sel, selTxt);
+      } else {
+        inserimento = md;
+      }
+
+      // Inserisci nel punto del cursore
+      const before = textarea.value.substring(0, start);
+      const after  = textarea.value.substring(end);
+      const needsNewline = before.length > 0 && !before.endsWith('\n') &&
+        (md.startsWith('#') || md.startsWith('-') || md.startsWith('1.') || md.startsWith('>'));
+
+      textarea.value = before + (needsNewline ? '\n' : '') + inserimento + after;
+
+      // Posiziona cursore dopo il testo inserito
+      const newPos = start + (needsNewline ? 1 : 0) + inserimento.length;
+      textarea.setSelectionRange(newPos, newPos);
+      textarea.focus();
+    });
+  });
+
+  // Cheatsheet toggle
+  document.getElementById('btn-md-help')?.addEventListener('click', () => {
+    const cs = document.getElementById('md-cheatsheet');
+    if (cs) {
+      const isVisible = cs.style.display !== 'none';
+      cs.style.display = isVisible ? 'none' : '';
+      document.getElementById('btn-md-help').style.background =
+        isVisible ? 'var(--accent-blue-dim)' : 'var(--accent-blue)';
+      document.getElementById('btn-md-help').style.color =
+        isVisible ? 'var(--accent-blue)' : '#fff';
+    }
+  });
 
   // Selettore tipo
   document.querySelectorAll('.type-btn').forEach(btn => {
@@ -1073,30 +1200,41 @@ async function renderImpostazioni() {
 
       <!-- Ultime modifiche -->
       <div class="settings-section">
-        <div class="settings-section-title">🕐 Ultime 10 modifiche</div>
-        <div id="ultime-mod-list">
+        <div class="settings-section-title" style="display:flex;align-items:center;justify-content:space-between">
+          <span>🕐 Ultime modifiche (${getUltimeModifiche().length}/250)</span>
+        </div>
+        <div id="ultime-mod-list" style="max-height:260px;overflow-y:auto">
           ${renderUltimeModHTML(getUltimeModifiche())}
         </div>
       </div>
 
       <!-- Log eventi -->
       <div class="settings-section">
-        <div class="settings-section-title" style="display:flex;align-items:center;justify-content:space-between">
-          <span>📋 Log eventi (ultime 250 voci)</span>
-          <button id="btn-cancella-log" style="
-            background:none;border:none;color:var(--text-muted);
-            font-size:.68rem;cursor:pointer;font-family:var(--font-ui);
-            padding:2px 8px;border-radius:4px;
-          ">🗑️ Cancella</button>
+        <div class="settings-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span>📋 Log eventi (${getLog().length}/250)</span>
+          <div style="display:flex;gap:6px">
+            <button id="btn-copia-log" style="
+              background:none;border:1px solid var(--border);color:var(--text-secondary);
+              font-size:.65rem;cursor:pointer;font-family:var(--font-ui);padding:2px 8px;
+              border-radius:4px;transition:all var(--transition)
+            ">📋 Copia tutto</button>
+            <button id="btn-cancella-log" style="
+              background:none;border:1px solid var(--border);color:var(--text-muted);
+              font-size:.65rem;cursor:pointer;font-family:var(--font-ui);padding:2px 8px;
+              border-radius:4px;
+            ">🗑️ Cancella</button>
+          </div>
         </div>
-        <div id="log-container" style="max-height:320px;overflow-y:auto">
+        <div id="log-container" style="max-height:240px;overflow-y:auto">
           ${renderLogHTML(getLog(50))}
         </div>
-        <div style="padding:10px 14px;border-top:1px solid var(--border)">
-          <button class="btn btn-secondary" id="btn-log-tutti" style="width:100%;font-size:.75rem">
+        ${getLog().length > 50 ? `
+        <div style="padding:8px 14px;border-top:1px solid var(--border)">
+          <button class="btn btn-secondary" id="btn-log-tutti"
+            style="width:100%;font-size:.72rem;padding:6px">
             Mostra tutte le ${getLog().length} voci
           </button>
-        </div>
+        </div>` : ''}
       </div>
 
       <!-- Info -->
@@ -1250,6 +1388,26 @@ function setupImpostazioniListeners() {
   // Export / Import
   document.getElementById('btn-export')?.addEventListener('click', esportaJSON);
   document.getElementById('btn-import')?.addEventListener('click', importaJSON);
+
+  // Log: copia tutto
+  document.getElementById('btn-copia-log')?.addEventListener('click', async () => {
+    const testo = logComeTesto();
+    try {
+      await navigator.clipboard.writeText(testo);
+      mostraToast('📋 Log copiato negli appunti', 'success');
+    } catch {
+      // Fallback per browser che non supportano clipboard API
+      const ta = document.createElement('textarea');
+      ta.value = testo;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      mostraToast('📋 Log copiato', 'success');
+    }
+  });
 
   // Log: cancella
   document.getElementById('btn-cancella-log')?.addEventListener('click', async () => {
