@@ -9,7 +9,7 @@ import {
   getImpostazione, setImpostazione, resetDB
 } from './db.js';
 import { initGrafo, aggiornaGrafo, evidenziaNodo } from './graph.js';
-import { initChat, populaListaContesto, setProvider, testaConnessioni } from './ai.js';
+import { initChat, populaListaContesto, setProvider, testaConnessioni, formattaInMarkdown, getProviderStatus } from './ai.js';
 import { esportaJSON, importaJSON } from './export.js';
 import { backupManuale, setFrequenzaBackup } from './backup.js';
 import { VERSIONE_LOCALE } from './updater.js';
@@ -550,6 +550,137 @@ function formHTML(el) {
           title="Aiuto Markdown"
           style="${mdBtnStyle};background:var(--accent-blue-dim);color:var(--accent-blue);
             border-color:var(--accent-blue);font-weight:700">?</button>
+
+        <button type="button" id="btn-md-ai"
+          title="Formatta con AI"
+          style="${mdBtnStyle};background:linear-gradient(135deg,var(--accent-blue),var(--accent-orange));
+            color:#fff;border:none;font-weight:700;padding:3px 10px;letter-spacing:.01em">
+          ✨ AI
+        </button>
+      </div>
+
+      <!-- Panel AI inline -->
+      <div id="md-ai-panel" style="
+        display:none;
+        background:var(--surface-2);
+        border:1px solid var(--accent-blue);
+        border-top:none;
+        border-radius:0;
+        padding:12px 14px;
+        display:none;
+        flex-direction:column;
+        gap:10px;
+      ">
+        <!-- Header panel -->
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:.72rem;font-weight:700;color:var(--text-primary)">
+            ✨ Formatta con AI
+          </span>
+          <div id="ai-panel-provider" style="
+            display:flex;align-items:center;gap:5px;
+            background:var(--surface-3);border-radius:99px;
+            padding:2px 8px;font-size:.65rem;color:var(--text-secondary)
+          ">
+            <span id="ai-panel-avatar">🤖</span>
+            <span id="ai-panel-label">Caricamento…</span>
+          </div>
+          <button type="button" id="btn-ai-panel-close" style="
+            margin-left:auto;background:none;border:none;
+            color:var(--text-muted);cursor:pointer;font-size:.85rem;
+            padding:2px 6px;border-radius:4px;
+          ">✕</button>
+        </div>
+
+        <!-- Testo da formattare -->
+        <div>
+          <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;
+            letter-spacing:.06em;color:var(--text-muted);margin-bottom:4px">
+            📝 Testo da formattare
+          </div>
+          <textarea id="ai-panel-input" rows="4" style="
+            width:100%;background:var(--input-bg);border:1px solid var(--input-border);
+            border-radius:var(--radius-sm);padding:8px 10px;
+            font-family:var(--font-ui);font-size:.8rem;color:var(--text-primary);
+            resize:vertical;outline:none;transition:border-color var(--transition);
+          " placeholder="Scrivi il testo qui oppure verrà usato quello già presente nell'editor…"></textarea>
+        </div>
+
+        <!-- Istruzioni opzionali -->
+        <div>
+          <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;
+            letter-spacing:.06em;color:var(--text-muted);margin-bottom:4px">
+            💬 Istruzioni aggiuntive <span style="font-weight:400;text-transform:none">(opzionali)</span>
+          </div>
+          <input type="text" id="ai-panel-istruzioni" style="
+            width:100%;background:var(--input-bg);border:1px solid var(--input-border);
+            border-radius:var(--radius-sm);padding:7px 10px;
+            font-family:var(--font-ui);font-size:.8rem;color:var(--text-primary);
+            outline:none;transition:border-color var(--transition);
+          " placeholder="es. 'aggiungi titoli', 'formatta come lista', 'rendilo più formale'…">
+        </div>
+
+        <!-- Bottone genera -->
+        <div style="display:flex;justify-content:flex-end">
+          <button type="button" id="btn-ai-genera" style="
+            background:linear-gradient(135deg,var(--accent-blue),var(--accent-orange));
+            color:#fff;border:none;border-radius:var(--radius-sm);
+            padding:8px 18px;font-family:var(--font-ui);font-size:.8rem;
+            font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;
+            transition:opacity var(--transition),transform var(--transition);
+            box-shadow:0 3px 12px rgba(79,123,247,.3);
+          ">
+            <span id="ai-genera-icon">✨</span>
+            <span id="ai-genera-label">Genera</span>
+          </button>
+        </div>
+
+        <!-- Anteprima risultato (nascosta finché non c'è output) -->
+        <div id="ai-panel-preview-wrap" style="display:none">
+          <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;
+            letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px">
+            👁️ Anteprima risultato
+          </div>
+
+          <!-- Raw Markdown -->
+          <div id="ai-panel-raw" style="
+            background:var(--surface-3);border:1px solid var(--border);
+            border-radius:var(--radius-sm) var(--radius-sm) 0 0;
+            padding:10px 12px;font-size:.78rem;
+            font-family:var(--font-mono);color:var(--text-secondary);
+            max-height:140px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;
+          "></div>
+
+          <!-- Preview renderizzata -->
+          <div id="ai-panel-rendered" style="
+            background:var(--input-bg);border:1px solid var(--border);border-top:none;
+            border-radius:0 0 var(--radius-sm) var(--radius-sm);
+            padding:10px 12px;font-size:.8rem;line-height:1.65;
+            max-height:160px;overflow-y:auto;
+          "></div>
+
+          <!-- Azioni -->
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button type="button" id="btn-ai-sostituisci" class="btn btn-primary" style="font-size:.75rem;padding:6px 14px">
+              ✅ Sostituisci
+            </button>
+            <button type="button" id="btn-ai-aggiungi" class="btn btn-secondary" style="font-size:.75rem;padding:6px 14px">
+              ➕ Aggiungi in fondo
+            </button>
+            <button type="button" id="btn-ai-rigenera" class="btn btn-ghost" style="font-size:.75rem;padding:6px 14px">
+              🔄 Rigenera
+            </button>
+            <button type="button" id="btn-ai-annulla" class="btn btn-ghost" style="font-size:.75rem;padding:6px 14px;margin-left:auto">
+              ✕ Annulla
+            </button>
+          </div>
+        </div>
+
+        <!-- Messaggio errore -->
+        <div id="ai-panel-error" style="
+          display:none;background:rgba(240,101,121,.1);border:1px solid var(--danger);
+          border-radius:var(--radius-sm);padding:8px 12px;
+          font-size:.75rem;color:var(--danger);
+        "></div>
       </div>
 
       <!-- Cheatsheet collassabile -->
@@ -694,6 +825,169 @@ function setupFormListeners(elOrigine, isModifica) {
     collegamenti:[...(elOrigine.collegamenti || [])],
     priorita:    elOrigine.priorita || 'media',
   };
+
+  // ── Pulsante AI Markdown ────────────────────────────────
+  const btnAI     = document.getElementById('btn-md-ai');
+  const aiPanel   = document.getElementById('md-ai-panel');
+  const btnClose  = document.getElementById('btn-ai-panel-close');
+  const btnGenera = document.getElementById('btn-ai-genera');
+  const aiInput   = document.getElementById('ai-panel-input');
+  const aiIstr    = document.getElementById('ai-panel-istruzioni');
+  const previewW  = document.getElementById('ai-panel-preview-wrap');
+  const rawEl     = document.getElementById('ai-panel-raw');
+  const rendEl    = document.getElementById('ai-panel-rendered');
+  const errEl     = document.getElementById('ai-panel-error');
+
+  let _ultimoRisultato = '';
+
+  // Apri/chiudi panel
+  btnAI?.addEventListener('click', async () => {
+    if (!aiPanel) return;
+    const isOpen = aiPanel.style.display === 'flex';
+
+    if (isOpen) {
+      aiPanel.style.display = 'none';
+      return;
+    }
+
+    // Precompila con testo esistente nell'editor
+    const textarea = document.getElementById('f-desc');
+    if (aiInput && textarea?.value.trim()) {
+      aiInput.value = textarea.value;
+    }
+
+    // Mostra provider attivo
+    const status = await getProviderStatus();
+    const avatarEl = document.getElementById('ai-panel-avatar');
+    const labelEl  = document.getElementById('ai-panel-label');
+    if (avatarEl) avatarEl.textContent = status.avatar;
+    if (labelEl)  labelEl.textContent  = status.hasKey
+      ? status.label
+      : `${status.label} — chiave mancante`;
+
+    // Reset preview e errore
+    if (previewW)  previewW.style.display  = 'none';
+    if (errEl)     errEl.style.display     = 'none';
+    if (rawEl)     rawEl.textContent        = '';
+    if (rendEl)    rendEl.innerHTML         = '';
+
+    aiPanel.style.display = 'flex';
+    aiInput?.focus();
+  });
+
+  // Chiudi panel
+  btnClose?.addEventListener('click', () => {
+    if (aiPanel) aiPanel.style.display = 'none';
+  });
+
+  // Genera — funzione riutilizzabile per il pulsante Rigenera
+  async function eseguiGenerazione() {
+    const testo     = aiInput?.value.trim() || '';
+    const istruzioni = aiIstr?.value.trim()  || '';
+
+    if (!testo) {
+      if (errEl) {
+        errEl.style.display  = '';
+        errEl.textContent    = '⚠️ Inserisci del testo da formattare.';
+      }
+      return;
+    }
+
+    // Stato loading
+    const iconEl  = document.getElementById('ai-genera-icon');
+    const labelEl = document.getElementById('ai-genera-label');
+    if (iconEl)  iconEl.textContent  = '';
+    if (labelEl) labelEl.textContent = 'Generazione…';
+    if (btnGenera) {
+      btnGenera.disabled = true;
+      btnGenera.style.opacity = '.6';
+    }
+    // Aggiunge spinner
+    if (iconEl) {
+      iconEl.innerHTML = '<div class="loading-spinner" style="width:13px;height:13px;border-width:2px;border-color:rgba(255,255,255,.3);border-top-color:#fff"></div>';
+    }
+
+    if (errEl)    errEl.style.display    = 'none';
+    if (previewW) previewW.style.display = 'none';
+
+    try {
+      const status = await getProviderStatus();
+      const risultato = await formattaInMarkdown(testo, istruzioni, status.provider);
+      _ultimoRisultato = risultato;
+
+      // Mostra raw
+      if (rawEl) rawEl.textContent = risultato;
+
+      // Mostra preview renderizzata
+      if (rendEl && window.marked) {
+        rendEl.innerHTML = window.marked.parse(risultato);
+      } else if (rendEl) {
+        rendEl.textContent = risultato;
+      }
+
+      if (previewW) previewW.style.display = '';
+      log(`AI Markdown: testo formattato (${risultato.length} caratteri)`, 'ai');
+
+    } catch (err) {
+      log(`Errore AI Markdown: ${err.message}`, 'errore');
+      if (errEl) {
+        errEl.style.display = '';
+        errEl.textContent   = `❌ ${err.message}`;
+      }
+    } finally {
+      if (iconEl)  iconEl.textContent  = '✨';
+      if (labelEl) labelEl.textContent = 'Genera';
+      if (btnGenera) {
+        btnGenera.disabled    = false;
+        btnGenera.style.opacity = '1';
+      }
+    }
+  }
+
+  btnGenera?.addEventListener('click', eseguiGenerazione);
+
+  // Rigenera (stesse istruzioni)
+  document.getElementById('btn-ai-rigenera')?.addEventListener('click', eseguiGenerazione);
+
+  // Sostituisci contenuto editor
+  document.getElementById('btn-ai-sostituisci')?.addEventListener('click', () => {
+    const textarea = document.getElementById('f-desc');
+    if (textarea && _ultimoRisultato) {
+      textarea.value = _ultimoRisultato;
+      // Aggiorna anteprima MD se aperta
+      const preview = document.getElementById('f-desc-preview');
+      if (preview && window.marked) preview.innerHTML = window.marked.parse(_ultimoRisultato);
+    }
+    if (aiPanel) aiPanel.style.display = 'none';
+    mostraToast('✅ Testo sostituito', 'success');
+  });
+
+  // Aggiungi in fondo
+  document.getElementById('btn-ai-aggiungi')?.addEventListener('click', () => {
+    const textarea = document.getElementById('f-desc');
+    if (textarea && _ultimoRisultato) {
+      const sep = textarea.value.trim() ? '\n\n' : '';
+      textarea.value += sep + _ultimoRisultato;
+      const preview = document.getElementById('f-desc-preview');
+      if (preview && window.marked) preview.innerHTML = window.marked.parse(textarea.value);
+    }
+    if (aiPanel) aiPanel.style.display = 'none';
+    mostraToast('✅ Testo aggiunto', 'success');
+  });
+
+  // Annulla
+  document.getElementById('btn-ai-annulla')?.addEventListener('click', () => {
+    if (previewW) previewW.style.display = 'none';
+    if (rawEl)    rawEl.textContent = '';
+    if (rendEl)   rendEl.innerHTML  = '';
+    _ultimoRisultato = '';
+  });
+
+  // Focus styling sui campi AI
+  [aiInput, aiIstr].forEach(el => {
+    el?.addEventListener('focus', () => el.style.borderColor = 'var(--accent-blue)');
+    el?.addEventListener('blur',  () => el.style.borderColor = 'var(--input-border)');
+  });
 
   // ── Toolbar Markdown ────────────────────────────────────
   document.querySelectorAll('.md-tool-btn').forEach(btn => {
