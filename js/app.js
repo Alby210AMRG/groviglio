@@ -1,70 +1,67 @@
 /* ============================================================
-   Groviglio – app.js
-   Entry point principale: boot sequenza, SW, init
+   Groviglio – app.js v1.0.2
+   Entry point: boot, SW registration, PWA install
    ============================================================ */
 
 import { openDB } from './db.js';
 import { initUI, setupFiltri } from './ui.js';
 import { initBackup } from './backup.js';
 import { initUpdater } from './updater.js';
+import { initLogger, log } from './logger.js';
 
 /* ─── Boot ────────────────────────────────────────────────── */
 async function boot() {
   try {
-    // 1. Apri IndexedDB
+    // 1. Logger prima di tutto (traccia tutti gli eventi successivi)
+    await initLogger();
+
+    // 2. Apri IndexedDB
     await openDB();
+    log('Database aperto', 'sistema');
 
-    // 2. Init UI (tema, navigazione, viste)
+    // 3. Registra Service Worker (PRIMA dell'UI, così è pronto)
+    await registraSW();
+
+    // 4. Init UI
     await initUI();
-
-    // 3. Setup filtri elenco
     setupFiltri();
+    log('Interfaccia pronta', 'sistema');
 
-    // 4. Backup automatico
+    // 5. Backup automatico
     await initBackup();
 
-    // 5. Controllo aggiornamenti
+    // 6. Controllo aggiornamenti GitHub
     initUpdater();
 
-    // 6. Registra Service Worker
-    registraSW();
-
-    // 7. Gestisci installazione PWA
+    // 7. PWA install prompt
     gestisciPWA();
 
-    console.log('🦊 Groviglio avviato con successo');
+    console.log('🦊 Groviglio v1.0.2 avviato');
   } catch (err) {
-    console.error('❌ Errore boot Groviglio:', err);
+    console.error('❌ Errore boot:', err);
     document.getElementById('splash')?.remove();
     mostraErroreBoot(err);
   }
 }
 
 /* ─── Service Worker ──────────────────────────────────────── */
-function registraSW() {
+async function registraSW() {
   if (!('serviceWorker' in navigator)) return;
 
-  navigator.serviceWorker
-    .register('/groviglio/sw.js', { scope: '/groviglio/' })
-    .then(reg => {
-      console.log('[SW] Registrato:', reg.scope);
+  try {
+    const reg = await navigator.serviceWorker.register(
+      '/groviglio/sw.js',
+      { scope: '/groviglio/' }
+    );
+    console.log('[SW] Registrato:', reg.scope);
 
-      // Aggiornamento disponibile
-      reg.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        newWorker?.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            console.log('[SW] Aggiornamento disponibile');
-          }
-        });
-      });
-    })
-    .catch(err => console.warn('[SW] Registrazione fallita:', err));
+    // ⚠️ NON aggiungere listener 'controllerchange' qui
+    // Il reload avviene solo quando l'utente preme "Aggiorna"
+    // ed è gestito in updater.js tramite window._applicaAggiornamento
 
-  // Ricarica quando SW prende il controllo
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    window.location.reload();
-  });
+  } catch (err) {
+    console.warn('[SW] Registrazione fallita:', err);
+  }
 }
 
 /* ─── PWA Install prompt ──────────────────────────────────── */
@@ -75,22 +72,20 @@ function gestisciPWA() {
     e.preventDefault();
     deferredPrompt = e;
 
-    // Mostra banner installazione dopo 30s se non già installata
     const giaInstallata = window.matchMedia('(display-mode: standalone)').matches;
     if (!giaInstallata) {
-      setTimeout(() => mostraBannerInstalla(deferredPrompt), 30000);
+      setTimeout(() => mostraBannerInstalla(deferredPrompt), 45000);
     }
   });
 
   window.addEventListener('appinstalled', () => {
-    console.log('[PWA] App installata');
+    log('App installata come PWA', 'sistema');
     deferredPrompt = null;
     document.getElementById('install-banner')?.remove();
   });
 }
 
 function mostraBannerInstalla(prompt) {
-  // Crea banner solo se non esiste
   if (document.getElementById('install-banner')) return;
 
   const banner = document.createElement('div');
@@ -99,24 +94,32 @@ function mostraBannerInstalla(prompt) {
     position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
     background:var(--surface);border:1px solid var(--border-strong);
     border-radius:14px;padding:14px 18px;box-shadow:var(--shadow-lg);
-    z-index:800;display:flex;align-items:center;gap:12px;max-width:340px;width:90%;
+    z-index:800;display:flex;align-items:center;gap:12px;
+    max-width:340px;width:90%;
     animation:toastIn .3s cubic-bezier(.34,1.56,.64,1);
   `;
   banner.innerHTML = `
-    <img src="/groviglio/icons/icon-72.png" style="width:40px;height:40px;border-radius:10px" alt="logo">
+    <img src="/groviglio/icons/icon-72.png"
+      style="width:40px;height:40px;border-radius:10px" alt="logo">
     <div style="flex:1">
-      <div style="font-weight:700;font-size:.85rem;color:var(--text-primary)">Installa Groviglio</div>
-      <div style="font-size:.72rem;color:var(--text-muted)">Accedi offline dal tuo dispositivo</div>
+      <div style="font-weight:700;font-size:.85rem;color:var(--text-primary)">
+        Installa Groviglio
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted)">
+        Accedi offline dal tuo dispositivo
+      </div>
     </div>
     <div style="display:flex;gap:8px">
       <button id="install-yes" style="
-        background:var(--accent-blue);color:#fff;border:none;border-radius:8px;
-        padding:6px 12px;font-family:var(--font-ui);font-size:.75rem;font-weight:600;cursor:pointer">
+        background:var(--accent-blue);color:#fff;border:none;
+        border-radius:8px;padding:6px 12px;
+        font-family:var(--font-ui);font-size:.75rem;font-weight:600;cursor:pointer">
         Installa
       </button>
       <button id="install-no" style="
-        background:var(--surface-3);color:var(--text-muted);border:none;border-radius:8px;
-        padding:6px 10px;font-family:var(--font-ui);font-size:.75rem;cursor:pointer">
+        background:var(--surface-3);color:var(--text-muted);border:none;
+        border-radius:8px;padding:6px 10px;
+        font-family:var(--font-ui);font-size:.75rem;cursor:pointer">
         ✕
       </button>
     </div>`;
@@ -128,7 +131,7 @@ function mostraBannerInstalla(prompt) {
     if (prompt) {
       prompt.prompt();
       const { outcome } = await prompt.userChoice;
-      console.log('[PWA] Scelta utente:', outcome);
+      log(`PWA install prompt: ${outcome}`, 'sistema');
     }
   });
 
@@ -139,8 +142,9 @@ function mostraBannerInstalla(prompt) {
 function mostraErroreBoot(err) {
   document.body.innerHTML = `
     <div style="
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      height:100dvh;gap:16px;padding:20px;font-family:sans-serif;background:#0D0F18;color:#EEF2FF
+      display:flex;flex-direction:column;align-items:center;
+      justify-content:center;height:100dvh;gap:16px;padding:20px;
+      font-family:sans-serif;background:#0D0F18;color:#EEF2FF
     ">
       <div style="font-size:3rem">⚠️</div>
       <div style="font-size:1.2rem;font-weight:700">Errore di avvio</div>
