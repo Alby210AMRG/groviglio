@@ -1,86 +1,93 @@
 /* ============================================================
-   Groviglio – updater.js v1.0.2
-   Controllo aggiornamenti da GitHub — consenso esplicito utente
+   Groviglio – updater.js v1.0.4
+   Banner aggiornamento anche con app attiva (Visibility API)
    ============================================================ */
 
 import { log } from './logger.js';
 
-const VERSION_LOCALE = '1.0.3';
+const VERSION_LOCALE = '1.0.4';
 const VERSION_URL = 'https://raw.githubusercontent.com/Alby210AMRG/groviglio/main/version.json';
 
-let _bannerEl   = null;
-let _swRegistration = null;
+let _bannerEl = null;
+let _ultimoCheck = 0;
+const CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 ora
 
 export function initUpdater() {
   _bannerEl = document.getElementById('update-banner');
   if (!_bannerEl) return;
 
-  // Salva riferimento alla registrazione SW
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistration().then(reg => {
-      _swRegistration = reg;
-
-      // Controlla se c'è già un SW in attesa (da sessione precedente)
       if (reg?.waiting) {
-        mostraBannerAggiornamento('(versione precedente in cache)');
+        log('Aggiornamento in attesa (SW waiting)', 'sistema');
+        mostraBannerAggiornamento('aggiornamento pronto');
       }
-
-      // Ascolta nuovi SW che arrivano in stato "waiting"
       reg?.addEventListener('updatefound', () => {
-        const newWorker = reg.installing;
-        newWorker?.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // Nuovo SW pronto ma in attesa — mostra banner
-            log('SW aggiornamento disponibile, in attesa consenso utente', 'sistema');
+        const nw = reg.installing;
+        nw?.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            log('Nuovo SW installato, in attesa conferma utente', 'sistema');
             mostraBannerAggiornamento();
           }
         });
       });
     });
 
-    // Ricarica SOLO dopo che l'utente ha confermato e il SW ha preso controllo
+    // Ricarica SOLO dopo conferma utente
     let aspettandoRicarica = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (aspettandoRicarica) {
-        window.location.reload();
-      }
+      if (aspettandoRicarica) window.location.reload();
     });
 
-    // Rendi disponibile la funzione per il banner
     window._applicaAggiornamento = async () => {
       aspettandoRicarica = true;
       const reg = await navigator.serviceWorker.getRegistration();
       if (reg?.waiting) {
         reg.waiting.postMessage('SKIP_WAITING');
       } else {
-        // Nessun SW in attesa: svuota cache e ricarica
-        await caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))));
+        await caches.keys().then(k => Promise.all(k.map(c => caches.delete(c))));
         window.location.reload(true);
       }
     };
   }
 
-  // Wiring bottoni banner
-  document.getElementById('update-aggiorna')
-    ?.addEventListener('click', () => {
-      log('Utente ha confermato aggiornamento app', 'sistema');
-      window._applicaAggiornamento?.();
-    });
+  // Bottoni banner
+  document.getElementById('update-aggiorna')?.addEventListener('click', () => {
+    log('Utente ha confermato aggiornamento', 'sistema');
+    window._applicaAggiornamento?.();
+  });
+  document.getElementById('update-chiudi')?.addEventListener('click', () => {
+    _bannerEl.classList.remove('visible');
+    log('Utente ha rimandato aggiornamento', 'sistema');
+  });
 
-  document.getElementById('update-chiudi')
-    ?.addEventListener('click', () => {
-      _bannerEl.classList.remove('visible');
-      log('Utente ha rimandato aggiornamento', 'sistema');
-    });
-
-  // Controlla versione remota dopo 3s (non blocca boot)
+  // ── Controllo versione ──────────────────────────────────
+  // 1. Al boot (dopo 3s)
   setTimeout(controllaAggiornamento, 3000);
-  // Ricontrolla ogni 6 ore
-  setInterval(controllaAggiornamento, 6 * 60 * 60 * 1000);
+
+  // 2. Ogni ora (app in background o attiva)
+  setInterval(controllaAggiornamento, CHECK_INTERVAL_MS);
+
+  // 3. Page Visibility API: controlla quando l'utente torna sull'app
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      const ora = Date.now();
+      // Evita check troppo frequenti (min 5 minuti tra un check e l'altro)
+      if (ora - _ultimoCheck > 5 * 60 * 1000) {
+        controllaAggiornamento();
+      }
+    }
+  });
+
+  // 4. Evento online: ricontrolla quando si riacquisisce connessione
+  window.addEventListener('online', () => {
+    setTimeout(controllaAggiornamento, 2000);
+  });
 }
 
 async function controllaAggiornamento() {
   if (!navigator.onLine) return;
+  _ultimoCheck = Date.now();
 
   try {
     const response = await fetch(VERSION_URL, {
@@ -90,29 +97,26 @@ async function controllaAggiornamento() {
     if (!response.ok) return;
 
     const dati = await response.json();
-    const versioneRemota = dati.version;
-    const changelog      = dati.changelog || '';
+    const remota = dati.version;
+    const changelog = dati.changelog || '';
 
-    if (isVersionePiuRecente(versioneRemota, VERSION_LOCALE)) {
-      log(`Nuova versione rilevata: ${versioneRemota}`, 'sistema');
+    if (isVersionePiuRecente(remota, VERSION_LOCALE)) {
+      log(`Nuova versione rilevata: ${remota}`, 'sistema');
       mostraBannerAggiornamento(changelog);
-      // Forza il browser a scaricare il nuovo SW
-      const reg = await navigator.serviceWorker.getRegistration();
+      const reg = await navigator.serviceWorker?.getRegistration();
       reg?.update();
     }
   } catch (err) {
-    // Silenzioso — offline o GitHub non raggiungibile
-    console.log('[Updater] Controllo fallito:', err.message);
+    console.log('[Updater] Check fallito:', err.message);
   }
 }
 
 function isVersionePiuRecente(remota, locale) {
-  const toNum = v => v.split('.').map(Number);
-  const r = toNum(remota);
-  const l = toNum(locale);
+  const n = v => v.split('.').map(Number);
+  const r = n(remota), l = n(locale);
   for (let i = 0; i < 3; i++) {
-    if ((r[i] || 0) > (l[i] || 0)) return true;
-    if ((r[i] || 0) < (l[i] || 0)) return false;
+    if ((r[i]||0) > (l[i]||0)) return true;
+    if ((r[i]||0) < (l[i]||0)) return false;
   }
   return false;
 }
