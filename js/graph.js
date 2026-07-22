@@ -49,9 +49,28 @@ export function initGrafo(elementi, onApriElemento) {
     }
   }));
 
-  // Deduplicazione archi
   const archiSet = new Set();
   const edges = [];
+
+  // Archi da parentId (gerarchia) — solidi, blu
+  for (const el of elementi) {
+    if (el.parentId && elementi.some(e => e.id === el.parentId)) {
+      const chiave = `hier-${el.parentId}--${el.id}`;
+      if (!archiSet.has(chiave)) {
+        archiSet.add(chiave);
+        edges.push({
+          data: {
+            id:     chiave,
+            source: el.parentId,
+            target: el.id,
+            tipo:   'gerarchia',
+          }
+        });
+      }
+    }
+  }
+
+  // Archi da collegamenti[] (liberi) — tratteggiati, grigi
   for (const el of elementi) {
     for (const targetId of (el.collegamenti || [])) {
       const chiave = [el.id, targetId].sort().join('--');
@@ -62,6 +81,7 @@ export function initGrafo(elementi, onApriElemento) {
             id:     `edge-${chiave}`,
             source: el.id,
             target: targetId,
+            tipo:   'libero',
           }
         });
       }
@@ -177,6 +197,27 @@ function buildStile() {
         'opacity':            0.6,
         'transition-property':'line-color, opacity, width',
         'transition-duration':'200ms',
+      }
+    },
+    // Archi gerarchici → solidi, colorati
+    {
+      selector: 'edge[tipo="gerarchia"]',
+      style: {
+        'line-color':    '#4F7BF7',
+        'width':         2.5,
+        'opacity':       0.7,
+        'curve-style':   'taxi',
+        'taxi-direction':'downward',
+      }
+    },
+    // Archi liberi → tratteggiati, grigi
+    {
+      selector: 'edge[tipo="libero"]',
+      style: {
+        'line-style':  'dashed',
+        'line-dash-pattern': [6, 3],
+        'line-color':  '#3A4060',
+        'opacity':     0.5,
       }
     },
     {
