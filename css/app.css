@@ -2463,3 +2463,98 @@ body {
     height: calc(52px + env(safe-area-inset-top));
   }
 }
+
+/* ══════════════════════════════════════════════════════════
+   AI MARKDOWN PANEL
+══════════════════════════════════════════════════════════ */
+
+#md-ai-panel {
+  animation: aiPanelIn .2s cubic-bezier(.4,0,.2,1);
+}
+
+@keyframes aiPanelIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+#btn-md-ai {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-orange)) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(79,123,247,.3);
+  transition: opacity var(--transition), transform var(--transition), box-shadow var(--transition) !important;
+}
+
+#btn-md-ai:hover {
+  opacity: .88;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(79,123,247,.4);
+}
+
+#ai-panel-input:focus,
+#ai-panel-istruzioni:focus {
+  border-color: var(--accent-blue) !important;
+  box-shadow: 0 0 0 3px var(--input-focus);
+}
+
+#btn-ai-genera:hover {
+  opacity: .9;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(79,123,247,.4) !important;
+}
+
+#btn-ai-genera:disabled {
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Raw markdown nel panel — stile codice */
+#ai-panel-raw {
+  font-family: var(--font-mono);
+  font-size: .72rem !important;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+/* Preview renderizzata nel panel */
+#ai-panel-rendered h1,
+#ai-panel-rendered h2,
+#ai-panel-rendered h3 { margin: 6px 0 4px; font-size: .9em; }
+#ai-panel-rendered p  { margin: 0 0 5px; }
+#ai-panel-rendered ul,
+#ai-panel-rendered ol { padding-left: 18px; margin: 4px 0; }
+#ai-panel-rendered li { margin: 2px 0; }
+#ai-panel-rendered code {
+  font-family: var(--font-mono);
+  font-size: .8em;
+  background: var(--surface-3);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+#ai-panel-rendered input[type="checkbox"] {
+  margin-right: 5px;
+}
+
+/* Mobile: panel AI full width */
+@media (max-width: 768px) {
+  #md-ai-panel {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  #ai-panel-input { rows: 3; font-size: .82rem !important; }
+
+  #btn-ai-genera {
+    width: 100%;
+    justify-content: center;
+  }
+
+  #ai-panel-preview-wrap > div:last-child {
+    flex-wrap: wrap;
+  }
+
+  #btn-ai-sostituisci,
+  #btn-ai-aggiungi,
+  #btn-ai-rigenera { flex: 1; justify-content: center; }
+  #btn-ai-annulla  { width: 100%; justify-content: center; }
+}
