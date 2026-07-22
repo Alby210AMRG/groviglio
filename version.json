@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.1.1",
   "date": "2025-01-08",
-  "changelog": "Gerarchia parentId, Vista Albero, Vista Tabella, Icon Picker, Import .md, fix Gemini"
+  "changelog": "Hotfix: fix import filtraElementi, SW cache forzata"
 }
