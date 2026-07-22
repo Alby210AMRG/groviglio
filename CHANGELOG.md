@@ -138,3 +138,32 @@ Formato: `[versione] – data – descrizione`
 ### 🔧 Tecnico aggiunto in REGOLE_ORO
 - Mai aggiungere `addEventListener` su elementi DOM persistenti senza prima rimuovere i listener precedenti
 - Usare sempre `cloneNode(true) + replaceChild` per reset listener su bottoni riutilizzati
+
+---
+
+## [1.1.0] – 2025-01-08
+
+### ✨ Nuove funzionalità
+- **Gerarchia elementi**: campo `parentId` su ogni elemento. Struttura: Macroprogetto → Progetto → Nota/Task/Idea
+- **Vista Albero**: albero collassabile con drag & drop per spostare elementi, azioni rapide per tipo
+- **Vista Tabella**: colonne Macroprogetto / Progetto / Titolo / Tipo / Priorità / Stato / Scadenza, ordinabile
+- **Icon Picker**: 60+ emoji in 6 categorie (Lavoro, Progetto, Idee, Task, Natura, Personale) per personalizzare ogni elemento
+- **Selettore Genitore**: campo "Genitore" nel form crea/modifica con ricerca e selezione
+- **Breadcrumb in card**: le card mostrano il padre (es. "📁 Channel Engine ›")
+- **Import .md**: bottone 📂 nella toolbar Markdown per importare file .md locali
+- **Grafo migliorato**: archi gerarchici (solidi blu) distinti da collegamenti liberi (tratteggiati grigi)
+
+### 🐛 Fix
+- **Gemini**: tornato a `gemini-2.5-flash` (stesso modello che funziona in Amici FC)
+
+### 🔧 Tecnico
+- `db.js`: DB_VERSION → 2, indice `parentId`, `creaElemento` + `buildAlbero()`, `getElementiFigli()`
+- `js/tree.js`: nuovo modulo vista albero con drag & drop
+- `js/tableview.js`: nuovo modulo vista tabella ordinabile/filtrabile
+- `js/icons.js`: libreria icone emoji con picker interattivo
+- `ui.js`: integra tree, table, icon picker, parent selector, import .md, breadcrumb card
+- `graph.js`: edge type `gerarchia` vs `libero` con stili distinti
+
+### 📋 Aggiornamento REGOLE_ORO
+- Mai aggiungere addEventListener su elementi DOM persistenti senza reset preventivo
+- Per gerarchie in IndexedDB usare Adjacency List (parentId) — max 3 livelli in beta
