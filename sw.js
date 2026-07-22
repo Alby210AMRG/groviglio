@@ -3,7 +3,7 @@
    Strategia: Cache-First per asset statici, Network-First per API
    ============================================================ */
 
-const CACHE_NAME = 'groviglio-v1.0.0';
+const CACHE_NAME = 'groviglio-v1.0.1';
 const STATIC_ASSETS = [
   '/groviglio/',
   '/groviglio/index.html',
