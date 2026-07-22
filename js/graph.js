@@ -37,17 +37,53 @@ export function initGrafo(elementi, onApriElemento) {
   // Distruggi istanza precedente
   if (_cy) { _cy.destroy(); _cy = null; }
 
-  const nodes = elementi.map(el => ({
-    data: {
-      id:        el.id,
-      label:     el.titolo,
-      tipo:      el.tipo,
-      priorita:  el.priorita,
-      colore:    el.coloreCustom || TIPO_COLORI[el.tipo] || '#4F7BF7',
-      icona:     TIPO_ICONE[el.tipo] || '📄',
-      completato:el.completato || false,
+  // Pre-calcola livello gerarchico e numero figli per ogni nodo
+  const idSet    = new Set(elementi.map(e => e.id));
+  const figliMap = {};  // id → numero figli diretti
+  for (const el of elementi) {
+    if (el.parentId && idSet.has(el.parentId)) {
+      figliMap[el.parentId] = (figliMap[el.parentId] || 0) + 1;
     }
-  }));
+  }
+
+  function getLivello(el, mappa, profondita = 0) {
+    if (!el.parentId || !idSet.has(el.parentId)) return profondita;
+    if (profondita > 10) return profondita; // evita loop
+    const padre = elementi.find(e => e.id === el.parentId);
+    return padre ? getLivello(padre, mappa, profondita + 1) : profondita;
+  }
+
+  const livelloMap = {};
+  for (const el of elementi) {
+    livelloMap[el.id] = getLivello(el, elementi);
+  }
+
+  const nodes = elementi.map(el => {
+    const livello   = livelloMap[el.id] || 0;
+    const nFigli    = figliMap[el.id] || 0;
+    const isRadice  = !el.parentId || !idSet.has(el.parentId);
+
+    // Dimensione nodo: radice grande, con figli media, foglia piccola
+    const size = isRadice && nFigli > 0 ? 90
+               : nFigli > 0             ? 70
+               : 50;
+
+    return {
+      data: {
+        id:        el.id,
+        label:     el.titolo,
+        tipo:      el.tipo,
+        priorita:  el.priorita,
+        colore:    el.coloreCustom || TIPO_COLORI[el.tipo] || '#4F7BF7',
+        icona:     el.icona || TIPO_ICONE[el.tipo] || '📄',
+        completato:el.completato || false,
+        livello,
+        nFigli,
+        isRadice:  isRadice ? 1 : 0,
+        size,
+      }
+    };
+  });
 
   const archiSet = new Set();
   const edges = [];
@@ -123,16 +159,17 @@ export function initGrafo(elementi, onApriElemento) {
 /* ─── Stile Cytoscape ─────────────────────────────────────── */
 function buildStile() {
   return [
+    // ── Nodo base ──────────────────────────────────────────
     {
       selector: 'node',
       style: {
-        'width':              60,
-        'height':             60,
+        'width':              'data(size)',
+        'height':             'data(size)',
         'background-color':   'data(colore)',
         'background-opacity': 0.85,
         'border-width':       2,
         'border-color':       'data(colore)',
-        'border-opacity':     0.6,
+        'border-opacity':     0.5,
         'label':              'data(label)',
         'text-valign':        'bottom',
         'text-halign':        'center',
@@ -141,110 +178,205 @@ function buildStile() {
         'font-family':        'Outfit, sans-serif',
         'font-weight':        600,
         'text-margin-y':      8,
-        'text-max-width':     100,
+        'text-max-width':     110,
         'text-wrap':          'ellipsis',
-        'text-overflow-wrap': 'anywhere',
         'overlay-padding':    8,
         'z-index':            10,
-        'shadow-blur':        10,
+        'shadow-blur':        8,
         'shadow-color':       'data(colore)',
-        'shadow-opacity':     0.4,
+        'shadow-opacity':     0.3,
         'shadow-offset-x':    0,
-        'shadow-offset-y':    4,
-        'transition-property':'background-color, border-color, width, height, shadow-opacity',
-        'transition-duration':'200ms',
+        'shadow-offset-y':    3,
+        'transition-property':'width, height, border-width, shadow-opacity, opacity',
+        'transition-duration':'220ms',
+        'text-outline-width': 2,
+        'text-outline-color': '#0D0F18',
+        'text-outline-opacity': 0.8,
       }
     },
+
+    // ── Radici (macroprogetti) ──────────────────────────────
+    {
+      selector: 'node[isRadice=1][nFigli>0]',
+      style: {
+        'border-width':   4,
+        'border-color':   'data(colore)',
+        'border-opacity': 1,
+        'shadow-blur':    20,
+        'shadow-opacity': 0.6,
+        'font-size':      13,
+        'font-weight':    700,
+        'z-index':        20,
+        // Bordo doppio simulato con outline
+        'outline-width':  3,
+        'outline-color':  'data(colore)',
+        'outline-opacity': 0.25,
+      }
+    },
+
+    // ── Nodi con figli ma non radice ───────────────────────
+    {
+      selector: 'node[nFigli>0][isRadice=0]',
+      style: {
+        'border-width':   3,
+        'border-opacity': 0.8,
+        'shadow-blur':    12,
+        'shadow-opacity': 0.45,
+        'font-size':      12,
+      }
+    },
+
+    // ── Foglie (nodi senza figli) ──────────────────────────
+    {
+      selector: 'node[nFigli=0]',
+      style: {
+        'border-width':   1.5,
+        'border-opacity': 0.4,
+        'shadow-blur':    5,
+        'shadow-opacity': 0.2,
+        'font-size':      10,
+      }
+    },
+
+    // ── Stili per tipo ─────────────────────────────────────
+    // Progetto: forma rettangolare arrotondata
+    {
+      selector: 'node[tipo="progetto"]',
+      style: {
+        'shape': 'round-rectangle',
+        'border-width': 3,
+      }
+    },
+
+    // Task: forma rombo
+    {
+      selector: 'node[tipo="task"]',
+      style: {
+        'shape': 'round-rectangle',
+        'border-style': 'dashed',
+        'border-width': 2,
+      }
+    },
+
+    // Idea: forma esagonale
+    {
+      selector: 'node[tipo="idea"]',
+      style: {
+        'shape': 'hexagon',
+      }
+    },
+
+    // Nota: forma cerchio (default, stile base)
+    {
+      selector: 'node[tipo="nota"]',
+      style: {
+        'shape': 'ellipse',
+      }
+    },
+
+    // ── Selezione ──────────────────────────────────────────
     {
       selector: 'node:selected',
       style: {
-        'border-width':   4,
+        'border-width':   5,
         'border-color':   '#F47C3C',
-        'width':          70,
-        'height':         70,
         'shadow-color':   '#F47C3C',
-        'shadow-opacity': 0.7,
-        'shadow-blur':    20,
-        'z-index':        20,
+        'shadow-opacity': 0.9,
+        'shadow-blur':    28,
+        'z-index':        30,
+        'outline-width':  4,
+        'outline-color':  '#F47C3C',
+        'outline-opacity': 0.3,
       }
     },
+
+    // ── Hover ──────────────────────────────────────────────
     {
       selector: 'node:hover',
       style: {
-        'border-width':   3,
+        'border-width':   4,
         'border-opacity': 1,
-        'width':          66,
-        'height':         66,
+        'shadow-opacity': 0.7,
+        'shadow-blur':    18,
         'cursor':         'pointer',
+        'z-index':        25,
       }
+    },
+
+    // ── Completato ─────────────────────────────────────────
+    {
+      selector: 'node[completato=1]',
+      style: {
+        'background-opacity': 0.35,
+        'border-opacity':     0.25,
+        'color':              '#4A5278',
+        'text-outline-opacity': 0,
+      }
+    },
+
+    // ── Dimmed (hover vicini) ──────────────────────────────
+    {
+      selector: 'node.dimmed',
+      style: { 'opacity': 0.15 }
     },
     {
-      selector: 'node[completato = 1]',
-      style: {
-        'background-opacity': 0.4,
-        'border-opacity':     0.3,
-        'color':              '#4A5278',
-      }
+      selector: 'node.focused',
+      style: { 'opacity': 1 }
     },
+
+    // ── Archi base ─────────────────────────────────────────
     {
       selector: 'edge',
       style: {
         'width':              1.5,
         'line-color':         '#2E3250',
-        'target-arrow-color': '#2E3250',
-        'target-arrow-shape': 'none',
         'curve-style':        'bezier',
         'opacity':            0.6,
-        'transition-property':'line-color, opacity, width',
+        'transition-property':'opacity, width, line-color',
         'transition-duration':'200ms',
       }
     },
-    // Archi gerarchici → solidi, colorati
+
+    // ── Archi gerarchici — solidi, colorati, con freccia ──
     {
       selector: 'edge[tipo="gerarchia"]',
       style: {
-        'line-color':    '#4F7BF7',
-        'width':         2.5,
-        'opacity':       0.7,
-        'curve-style':   'taxi',
-        'taxi-direction':'downward',
+        'line-color':           '#4F7BF7',
+        'target-arrow-color':   '#4F7BF7',
+        'target-arrow-shape':   'triangle',
+        'target-arrow-size':    8,
+        'arrow-scale':          1.2,
+        'width':                2.5,
+        'opacity':              0.75,
+        'curve-style':          'bezier',
       }
     },
-    // Archi liberi → tratteggiati, grigi
+
+    // ── Archi liberi — tratteggiati, grigi ────────────────
     {
       selector: 'edge[tipo="libero"]',
       style: {
-        'line-style':  'dashed',
+        'line-style':        'dashed',
         'line-dash-pattern': [6, 3],
-        'line-color':  '#3A4060',
-        'opacity':     0.5,
+        'line-color':        '#4A5278',
+        'width':             1.5,
+        'opacity':           0.45,
       }
     },
+
+    // ── Archi selezionati ──────────────────────────────────
     {
       selector: 'edge:selected, edge.highlighted',
       style: {
-        'width':       2.5,
-        'line-color':  '#4F7BF7',
-        'opacity':     1,
+        'width':      3,
+        'line-color': '#F47C3C',
+        'opacity':    1,
       }
     },
-    {
-      selector: 'node.dimmed',
-      style: {
-        'opacity': 0.2,
-      }
-    },
+
     {
       selector: 'edge.dimmed',
-      style: {
-        'opacity': 0.08,
-      }
-    },
-    {
-      selector: 'node.focused',
-      style: {
-        'opacity': 1,
-      }
+      style: { 'opacity': 0.05 }
     },
   ];
 }
