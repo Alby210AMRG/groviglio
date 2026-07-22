@@ -213,7 +213,7 @@ async function chiamaGemini(testo, storico, contesto) {
   contents.push({ role: 'user', parts: [{ text: testo }] });
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -433,4 +433,115 @@ export function setProvider(provider) {
 function tipoIcon(tipo) {
   const icons = { nota: '📝', idea: '💡', progetto: '📁', task: '✅' };
   return icons[tipo] || '📄';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TEST CONNESSIONE API
+═══════════════════════════════════════════════════════════ */
+
+/**
+ * Testa la connessione per tutti i provider configurati
+ * @returns {Promise<{claude, gemini, chatgpt}>}
+ */
+export async function testaConnessioni() {
+  const [apiClaude, apiGemini, apiOpenAI] = await Promise.all([
+    getImpostazione('apiKeyAnthropic', ''),
+    getImpostazione('apiKeyGemini', ''),
+    getImpostazione('apiKeyOpenAI', ''),
+  ]);
+
+  const risultati = {};
+
+  // Test Claude
+  if (apiClaude) {
+    risultati.claude = await _testaClaude(apiClaude);
+  } else {
+    risultati.claude = { ok: false, msg: 'Chiave API non configurata' };
+  }
+
+  // Test Gemini
+  if (apiGemini) {
+    risultati.gemini = await _testaGemini(apiGemini);
+  } else {
+    risultati.gemini = { ok: false, msg: 'Chiave API non configurata' };
+  }
+
+  // Test ChatGPT
+  if (apiOpenAI) {
+    risultati.chatgpt = await _testaChatGPT(apiOpenAI);
+  } else {
+    risultati.chatgpt = { ok: false, msg: 'Chiave API non configurata' };
+  }
+
+  return risultati;
+}
+
+async function _testaClaude(apiKey) {
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-5',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'ping' }],
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (r.ok) return { ok: true, msg: 'Connessione OK ✅' };
+    const e = await r.json().catch(() => ({}));
+    return { ok: false, msg: e.error?.message || `Errore ${r.status}` };
+  } catch (e) {
+    return { ok: false, msg: e.name === 'TimeoutError' ? 'Timeout' : e.message };
+  }
+}
+
+async function _testaGemini(apiKey) {
+  try {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
+          generationConfig: { maxOutputTokens: 10 },
+        }),
+        signal: AbortSignal.timeout(8000),
+      }
+    );
+    if (r.ok) return { ok: true, msg: 'Connessione OK ✅' };
+    const e = await r.json().catch(() => ({}));
+    return { ok: false, msg: e.error?.message || `Errore ${r.status}` };
+  } catch (e) {
+    return { ok: false, msg: e.name === 'TimeoutError' ? 'Timeout' : e.message };
+  }
+}
+
+async function _testaChatGPT(apiKey) {
+  try {
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'ping' }],
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (r.ok) return { ok: true, msg: 'Connessione OK ✅' };
+    const e = await r.json().catch(() => ({}));
+    return { ok: false, msg: e.error?.message || `Errore ${r.status}` };
+  } catch (e) {
+    return { ok: false, msg: e.name === 'TimeoutError' ? 'Timeout' : e.message };
+  }
 }
