@@ -14,6 +14,10 @@ import { esportaJSON, importaJSON } from './export.js';
 import { backupManuale, setFrequenzaBackup } from './backup.js';
 import { VERSIONE_LOCALE } from './updater.js';
 import { log, logModifica, getLog, getUltimeModifiche, cancellaLog, logComeTesto, renderLogHTML, renderUltimeModHTML } from './logger.js';
+import { initTreeView, renderAlbero } from './tree.js';
+import { initTableView, renderTabella } from './tableview.js';
+import { getIcona, renderIconPicker, TIPO_ICONA_DEFAULT } from './icons.js';
+import { buildAlbero } from './db.js';
 
 /* ─── Stato globale UI ────────────────────────────────────── */
 const stato = {
@@ -34,7 +38,27 @@ export async function initUI() {
   setupSidebar();
   setupToast();
 
-  // Carica dati
+  // Init tree e table view
+  initTreeView({
+    apriElemento: apriDettaglio,
+    apriModalModifica,
+    eliminaElemento: async (id) => {
+      const el = stato.elementi.find(e => e.id === id);
+      if (el) { logModifica(el, 'elimina'); await eliminaElemento(id); }
+      stato.elementi = await getElementi();
+      await aggiornaBadgeSidebar();
+    },
+  });
+  initTableView({
+    apriElemento: apriDettaglio,
+    apriModalModifica,
+    eliminaElemento: async (id) => {
+      const el = stato.elementi.find(e => e.id === id);
+      if (el) { logModifica(el, 'elimina'); await eliminaElemento(id); }
+      stato.elementi = await getElementi();
+      await aggiornaBadgeSidebar();
+    },
+  });
   stato.elementi = await getElementi();
   await aggiornaBadgeSidebar();
   log(`${stato.elementi.length} elementi caricati`, 'sistema');
@@ -112,6 +136,8 @@ export async function navigaA(vista) {
     case 'elenco':       await renderElenco(); break;
     case 'grafo':        await renderGrafo(); break;
     case 'chat':         await renderChat(); break;
+    case 'albero':       await renderAlbero(); break;
+    case 'tabella':      await renderTabella(); break;
     case 'impostazioni': await renderImpostazioni(); break;
   }
 
@@ -173,13 +199,15 @@ async function renderElenco() {
 function cardHTML(el) {
   const dataRel = dataRelativa(el.updatedAt);
   const nCollegamenti = el.collegamenti?.length || 0;
+  const icona = getIcona(el);
+  const padre = el.parentId ? stato.elementi.find(e => e.id === el.parentId) : null;
 
   let statoHTML = '';
   if (el.tipo === 'progetto' || el.tipo === 'idea') {
     const cls = `stato-${el.stato}`;
     const lbl = {
-      attivo: 'Attivo', pausato: 'Pausato', concluso: 'Concluso',
-      bozza: 'Bozza', sviluppo: 'In sviluppo', realizzata: 'Realizzata'
+      attivo:'Attivo', pausato:'Pausato', concluso:'Concluso',
+      bozza:'Bozza', sviluppo:'In sviluppo', realizzata:'Realizzata'
     }[el.stato] || el.stato;
     statoHTML = `<span class="stato-badge ${cls}">${lbl}</span>`;
   }
@@ -193,11 +221,20 @@ function cardHTML(el) {
     .map(t => `<span class="tag">#${t}</span>`)
     .join('');
 
+  const breadcrumbHTML = padre ? `
+    <div style="font-size:.62rem;color:var(--text-muted);margin-bottom:2px;
+      display:flex;align-items:center;gap:4px">
+      <span>${getIcona(padre)}</span>
+      <span>${escapeHTML(padre.titolo)}</span>
+      <span>›</span>
+    </div>` : '';
+
   return `
     <div class="card" data-id="${el.id}" data-type="${el.tipo}">
+      ${breadcrumbHTML}
       <div class="card-header">
         ${checkboxHTML}
-        <div class="card-type-icon">${tipoIcon(el.tipo)}</div>
+        <div class="card-type-icon">${icona}</div>
         <div class="card-title ${el.completato ? 'done-text' : ''}">${escapeHTML(el.titolo)}</div>
         <div class="card-priority priority-${el.priorita}"></div>
       </div>
@@ -209,10 +246,7 @@ function cardHTML(el) {
         ${tagsHTML}
         ${statoHTML}
         <div class="card-meta">
-          ${nCollegamenti > 0 ? `
-            <span class="card-links-count">
-              🔗 ${nCollegamenti}
-            </span>` : ''}
+          ${nCollegamenti > 0 ? `<span class="card-links-count">🔗 ${nCollegamenti}</span>` : ''}
           <span>${dataRel}</span>
         </div>
       </div>
@@ -499,15 +533,20 @@ function formHTML(el) {
   }).join('');
 
   return `
-    <!-- Tipo -->
+    <!-- Icona + Tipo -->
     <div class="form-field">
-      <div class="form-label">Tipo</div>
-      <div class="type-selector">
-        ${['nota','idea','progetto','task'].map(t => `
-          <button class="type-btn ${el.tipo === t ? 'active' : ''}" data-type="${t}">
-            <span class="type-btn-icon">${tipoIcon(t)}</span>
-            ${t.charAt(0).toUpperCase() + t.slice(1)}
-          </button>`).join('')}
+      <div class="form-label">Icona & Tipo</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <!-- Icon picker -->
+        <div id="icon-picker-container"></div>
+        <!-- Tipo selector -->
+        <div class="type-selector" style="flex:1">
+          ${['nota','idea','progetto','task'].map(t => `
+            <button class="type-btn ${el.tipo === t ? 'active' : ''}" data-type="${t}">
+              <span class="type-btn-icon">${TIPO_ICONA_DEFAULT[t]}</span>
+              ${t.charAt(0).toUpperCase() + t.slice(1)}
+            </button>`).join('')}
+        </div>
       </div>
     </div>
 
@@ -561,6 +600,11 @@ function formHTML(el) {
           title="Aiuto Markdown"
           style="${mdBtnStyle};background:var(--accent-blue-dim);color:var(--accent-blue);
             border-color:var(--accent-blue);font-weight:700">?</button>
+
+        <button type="button" id="btn-md-import"
+          title="Importa file .md"
+          style="${mdBtnStyle}">📂</button>
+        <input type="file" id="f-md-file" accept=".md,.txt,text/markdown,text/plain" style="display:none">
 
         <button type="button" id="btn-md-ai"
           title="Formatta con AI"
@@ -792,6 +836,14 @@ function formHTML(el) {
       </div>
     </div>
 
+    <!-- Genitore (parentId) -->
+    <div class="form-field">
+      <div class="form-label">Genitore <span style="color:var(--text-muted);font-weight:400;font-size:.65rem">(opzionale — per gerarchia)</span></div>
+      <div id="parent-selector-container">
+        <!-- Popolato da JS -->
+      </div>
+    </div>
+
     <!-- Collegamento ad altri elementi -->
     <div class="form-field">
       <div class="form-label">Collega ad altri elementi</div>
@@ -835,7 +887,40 @@ function setupFormListeners(elOrigine, isModifica) {
     tag:         [...(elOrigine.tag || [])],
     collegamenti:[...(elOrigine.collegamenti || [])],
     priorita:    elOrigine.priorita || 'media',
+    icona:       elOrigine.icona || null,
+    parentId:    elOrigine.parentId || null,
   };
+
+  // ── Icon picker ─────────────────────────────────────────
+  const iconPickerCont = document.getElementById('icon-picker-container');
+  if (iconPickerCont) {
+    renderIconPicker(iconPickerCont, formState.icona, (nuovaIcona) => {
+      formState.icona = nuovaIcona;
+    });
+  }
+
+  // ── Import .md ──────────────────────────────────────────
+  document.getElementById('btn-md-import')?.addEventListener('click', () => {
+    document.getElementById('f-md-file')?.click();
+  });
+  document.getElementById('f-md-file')?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const testo = await file.text();
+    const textarea = document.getElementById('f-desc');
+    if (textarea) {
+      const sep = textarea.value.trim() ? '\n\n' : '';
+      textarea.value += sep + testo;
+    }
+    mostraToast(`✅ Importato: ${file.name}`, 'success');
+    e.target.value = '';
+  });
+
+  // ── Parent selector ─────────────────────────────────────
+  const parentCont = document.getElementById('parent-selector-container');
+  if (parentCont) {
+    setupParentSelector(parentCont, formState, elOrigine.id);
+  }
 
   // ── Pulsante AI Markdown ────────────────────────────────
   const btnAI     = document.getElementById('btn-md-ai');
@@ -1256,6 +1341,8 @@ function setupFormListeners(elOrigine, isModifica) {
       tag:         formState.tag,
       immagini:    formState.immagini,
       collegamenti:formState.collegamenti,
+      icona:       formState.icona,
+      parentId:    formState.parentId,
     };
 
     try {
@@ -1286,6 +1373,65 @@ function setupFormListeners(elOrigine, isModifica) {
       if (b) { b.disabled = false; b.textContent = '💾 Salva'; }
     }
   });
+}
+
+function setupParentSelector(cont, formState, selfId) {
+  const candidati = stato.elementi.filter(e => e.id !== selfId);
+  let parentCorrente = candidati.find(e => e.id === formState.parentId) || null;
+
+  function render() {
+    if (parentCorrente) {
+      cont.innerHTML = `
+        <div class="parent-selected-chip">
+          <span>${getIcona(parentCorrente)}</span>
+          <span style="font-weight:600">${escapeHTML(parentCorrente.titolo)}</span>
+          <span style="font-size:.65rem;color:var(--text-muted)">(${parentCorrente.tipo})</span>
+          <button class="parent-clear-btn" id="btn-parent-clear" type="button">✕</button>
+        </div>`;
+      document.getElementById('btn-parent-clear')?.addEventListener('click', () => {
+        parentCorrente = null;
+        formState.parentId = null;
+        render();
+      });
+    } else {
+      cont.innerHTML = `
+        <div style="display:flex;gap:8px;flex-direction:column">
+          <input class="form-input" id="f-parent-search"
+            placeholder="Cerca elemento genitore…" autocomplete="off"
+            value="">
+          <div id="f-parent-suggestions" style="display:none;background:var(--surface-2);
+            border:1px solid var(--border);border-radius:var(--radius-sm);
+            max-height:140px;overflow-y:auto;margin-top:-4px"></div>
+        </div>`;
+
+      const searchEl = cont.querySelector('#f-parent-search');
+      const suggEl   = cont.querySelector('#f-parent-suggestions');
+
+      searchEl?.addEventListener('input', () => {
+        const q = searchEl.value.toLowerCase().trim();
+        if (!q) { suggEl.style.display = 'none'; return; }
+        const ris = candidati.filter(e =>
+          e.titolo.toLowerCase().includes(q) || e.tipo.toLowerCase().includes(q)
+        ).slice(0, 8);
+        if (!ris.length) { suggEl.style.display = 'none'; return; }
+        suggEl.style.display = '';
+        suggEl.innerHTML = ris.map(e => `
+          <div class="link-item" data-pid="${e.id}" style="cursor:pointer">
+            <span>${getIcona(e)}</span>
+            <span style="font-weight:600">${escapeHTML(e.titolo)}</span>
+            <span style="font-size:.65rem;color:var(--text-muted);margin-left:4px">${e.tipo}</span>
+          </div>`).join('');
+        suggEl.querySelectorAll('.link-item').forEach(item => {
+          item.addEventListener('click', () => {
+            parentCorrente = candidati.find(e => e.id === item.dataset.pid);
+            formState.parentId = parentCorrente?.id || null;
+            render();
+          });
+        });
+      });
+    }
+  }
+  render();
 }
 
 function aggiungiThumb(dataSrc, nome, idx, formState) {
