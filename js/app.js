@@ -36,7 +36,8 @@ async function boot() {
     // 7. PWA install prompt
     gestisciPWA();
 
-    console.log('🦊 Groviglio v1.0.2 avviato');
+    console.log('🦊 Groviglio v1.1.2 avviato');
+    window.__GROVIGLIO_READY__ = true;
   } catch (err) {
     console.error('❌ Errore boot:', err);
     document.getElementById('splash')?.remove();
