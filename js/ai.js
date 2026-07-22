@@ -5,6 +5,7 @@
 
 import { getImpostazione, salvaMessaggioChat, getStoricoChatSessione, cancellaChat } from './db.js';
 import { mostraToast } from './ui.js';
+import { log } from './logger.js';
 
 /* ─── Stato ───────────────────────────────────────────────── */
 let _provider   = 'claude';    // claude | gemini | chatgpt
@@ -110,6 +111,7 @@ async function inviaMessaggio() {
   } catch (err) {
     rimuoviTyping(typingId);
     const msgErr = err.message || 'Errore sconosciuto';
+    log(`Errore AI [${_provider}]: ${msgErr}`, 'errore');
     aggiungiBolla({
       role: 'assistant',
       content: `❌ **Errore:** ${msgErr}\n\nVerifica la chiave API nelle impostazioni.`,
@@ -213,7 +215,7 @@ async function chiamaGemini(testo, storico, contesto) {
   contents.push({ role: 'user', parts: [{ text: testo }] });
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -504,7 +506,7 @@ async function _testaClaude(apiKey) {
 async function _testaGemini(apiKey) {
   try {
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
