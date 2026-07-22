@@ -123,3 +123,18 @@ Formato: `[versione] – data – descrizione`
 - `js/ai.js`: `formattaInMarkdown(testo, istruzioni, provider)` + `getProviderStatus()`
 - `js/ui.js`: listener completo AI panel, gestione stati loading/error/success
 - `css/app.css`: animazione panel, stili raw/preview, responsive mobile
+
+---
+
+## [1.0.6] – 2025-01-07
+
+### 🐛 Fix critico
+- **Note duplicate al salvataggio**: ogni apertura del modal aggiungeva un nuovo listener sul bottone Salva senza rimuovere quello precedente. Al 3° salvataggio → 3 note create simultaneamente.
+  - **Soluzione 1**: clonazione del bottone Salva ad ogni apertura modal → elimina tutti i listener accumulati
+  - **Soluzione 2**: guard `_staSalvando` anti-doppio-click → se il salvataggio è già in corso, i click successivi vengono ignorati
+  - **Soluzione 3**: bottone disabilitato durante il salvataggio con feedback "⏳ Salvataggio…"
+- Errori di salvataggio ora loggati nel log eventi
+
+### 🔧 Tecnico aggiunto in REGOLE_ORO
+- Mai aggiungere `addEventListener` su elementi DOM persistenti senza prima rimuovere i listener precedenti
+- Usare sempre `cloneNode(true) + replaceChild` per reset listener su bottoni riutilizzati
