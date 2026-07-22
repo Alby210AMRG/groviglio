@@ -3,7 +3,7 @@
    Controllo aggiornamenti da GitHub via version.json
    ============================================================ */
 
-const VERSION_LOCALE = '1.0.0';
+const VERSION_LOCALE = '1.0.1';
 const VERSION_URL = 'https://raw.githubusercontent.com/Alby210AMRG/groviglio/main/version.json';
 
 let _bannerEl = null;
