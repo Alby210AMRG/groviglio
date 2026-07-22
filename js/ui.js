@@ -13,6 +13,7 @@ import { initChat, populaListaContesto, setProvider } from './ai.js';
 import { esportaJSON, importaJSON } from './export.js';
 import { backupManuale, setFrequenzaBackup } from './backup.js';
 import { VERSIONE_LOCALE } from './updater.js';
+import { log, logModifica, getLog, getUltimeModifiche, cancellaLog, renderLogHTML, renderUltimeModHTML } from './logger.js';
 
 /* ─── Stato globale UI ────────────────────────────────────── */
 const stato = {
@@ -36,6 +37,7 @@ export async function initUI() {
   // Carica dati
   stato.elementi = await getElementi();
   await aggiornaBadgeSidebar();
+  log(`${stato.elementi.length} elementi caricati`, 'sistema');
 
   // Vista iniziale
   const urlParams = new URLSearchParams(window.location.search);
@@ -332,6 +334,7 @@ export async function apriDettaglio(id) {
 
   document.getElementById('btn-elimina-el')?.addEventListener('click', async () => {
     if (confirm(`Eliminare "${el.titolo}"? Questa azione non è reversibile.`)) {
+      logModifica(el, 'elimina');
       await eliminaElemento(el.id);
       stato.elementi = stato.elementi.filter(e => e.id !== el.id);
       overlay.classList.remove('open');
@@ -819,10 +822,12 @@ function setupFormListeners(elOrigine, isModifica) {
       if (isModifica) {
         el = await aggiornaElemento(elOrigine.id, dati);
         stato.elementi = stato.elementi.map(e => e.id === el.id ? el : e);
+        logModifica(el, 'modifica');
         mostraToast('✅ Elemento aggiornato', 'success');
       } else {
         el = await creaElemento(dati);
         stato.elementi.push(el);
+        logModifica(el, 'crea');
         mostraToast(`✅ ${dati.tipo} creata`, 'success');
       }
 
@@ -1054,6 +1059,34 @@ async function renderImpostazioni() {
         </div>
       </div>
 
+      <!-- Ultime modifiche -->
+      <div class="settings-section">
+        <div class="settings-section-title">🕐 Ultime 10 modifiche</div>
+        <div id="ultime-mod-list">
+          ${renderUltimeModHTML(getUltimeModifiche())}
+        </div>
+      </div>
+
+      <!-- Log eventi -->
+      <div class="settings-section">
+        <div class="settings-section-title" style="display:flex;align-items:center;justify-content:space-between">
+          <span>📋 Log eventi (ultime 250 voci)</span>
+          <button id="btn-cancella-log" style="
+            background:none;border:none;color:var(--text-muted);
+            font-size:.68rem;cursor:pointer;font-family:var(--font-ui);
+            padding:2px 8px;border-radius:4px;
+          ">🗑️ Cancella</button>
+        </div>
+        <div id="log-container" style="max-height:320px;overflow-y:auto">
+          ${renderLogHTML(getLog(50))}
+        </div>
+        <div style="padding:10px 14px;border-top:1px solid var(--border)">
+          <button class="btn btn-secondary" id="btn-log-tutti" style="width:100%;font-size:.75rem">
+            Mostra tutte le ${getLog().length} voci
+          </button>
+        </div>
+      </div>
+
       <!-- Info -->
       <div class="settings-section">
         <div class="settings-section-title">ℹ️ Informazioni</div>
@@ -1144,6 +1177,22 @@ function setupImpostazioniListeners() {
   // Export / Import
   document.getElementById('btn-export')?.addEventListener('click', esportaJSON);
   document.getElementById('btn-import')?.addEventListener('click', importaJSON);
+
+  // Log: cancella
+  document.getElementById('btn-cancella-log')?.addEventListener('click', async () => {
+    if (!confirm('Cancellare il log eventi?')) return;
+    await cancellaLog();
+    document.getElementById('log-container').innerHTML = renderLogHTML([]);
+    mostraToast('Log cancellato', 'info');
+  });
+
+  // Log: mostra tutto
+  document.getElementById('btn-log-tutti')?.addEventListener('click', () => {
+    const cont = document.getElementById('log-container');
+    cont.innerHTML = renderLogHTML(getLog());
+    cont.style.maxHeight = '600px';
+    document.getElementById('btn-log-tutti').style.display = 'none';
+  });
 
   // Reset
   document.getElementById('btn-reset')?.addEventListener('click', async () => {
