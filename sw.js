@@ -71,6 +71,9 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
+  // Intercetta solo http/https — salta chrome-extension e altri schemi
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
   // API AI → sempre network, non intercettare
   if (
     url.hostname === 'api.anthropic.com' ||
