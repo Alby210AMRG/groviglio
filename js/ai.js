@@ -547,3 +547,135 @@ async function _testaChatGPT(apiKey) {
     return { ok: false, msg: e.name === 'TimeoutError' ? 'Timeout' : e.message };
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   FORMATTAZIONE MARKDOWN AI
+   Usata dal pulsante ✨ AI nell'editor degli elementi
+═══════════════════════════════════════════════════════════ */
+
+/**
+ * Prende testo libero e lo formatta/crea in Markdown
+ * @param {string} testo        - Testo da formattare
+ * @param {string} istruzioni   - Istruzioni aggiuntive opzionali
+ * @param {string} provider     - 'claude' | 'gemini' | 'chatgpt'
+ * @returns {Promise<string>}   - Testo in Markdown
+ */
+export async function formattaInMarkdown(testo, istruzioni = '', provider = null) {
+  const prov = provider || _provider;
+
+  const systemPrompt = `Sei un assistente che converte testo in Markdown ben formattato.
+Regole FONDAMENTALI:
+- Rispondi SOLO con il testo Markdown, senza spiegazioni né commenti
+- Non aggiungere blocchi di codice con \`\`\`markdown
+- Usa titoli (##, ###), elenchi (-, 1.), grassetto (**), corsivo (_), checklist (- [ ]) dove appropriato
+- Mantieni il significato originale del testo
+- Se il testo è già in Markdown, miglioralo e correggilo
+- Rispondi in italiano`;
+
+  const userPrompt = istruzioni
+    ? `Formatta questo testo in Markdown.\nIstruzioni aggiuntive: ${istruzioni}\n\nTesto:\n${testo}`
+    : `Formatta questo testo in Markdown:\n\n${testo}`;
+
+  const apiKey_claude  = await getImpostazione('apiKeyAnthropic', '');
+  const apiKey_gemini  = await getImpostazione('apiKeyGemini', '');
+  const apiKey_openai  = await getImpostazione('apiKeyOpenAI', '');
+
+  switch (prov) {
+    case 'claude': {
+      if (!apiKey_claude) throw new Error('Chiave API Claude non configurata');
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey_claude,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-4-5',
+          max_tokens: 2000,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }],
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        throw new Error(e.error?.message || `Errore HTTP ${r.status}`);
+      }
+      const d = await r.json();
+      return d.content[0]?.text?.trim() || '';
+    }
+
+    case 'gemini': {
+      if (!apiKey_gemini) throw new Error('Chiave API Gemini non configurata');
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey_gemini}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+            generationConfig: { maxOutputTokens: 2000, temperature: 0.4 },
+          }),
+          signal: AbortSignal.timeout(30000),
+        }
+      );
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        throw new Error(e.error?.message || `Errore HTTP ${r.status}`);
+      }
+      const d = await r.json();
+      return d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    }
+
+    case 'chatgpt': {
+      if (!apiKey_openai) throw new Error('Chiave API OpenAI non configurata');
+      const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey_openai}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          max_tokens: 2000,
+          temperature: 0.4,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user',   content: userPrompt   },
+          ],
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        throw new Error(e.error?.message || `Errore HTTP ${r.status}`);
+      }
+      const d = await r.json();
+      return d.choices?.[0]?.message?.content?.trim() || '';
+    }
+
+    default:
+      throw new Error('Nessun provider AI configurato. Vai in Impostazioni → AI.');
+  }
+}
+
+/**
+ * Ritorna il provider attivo e se ha una chiave configurata
+ */
+export async function getProviderStatus() {
+  const provider = await getImpostazione('providerAI', 'claude');
+  const keyMap = {
+    claude:  await getImpostazione('apiKeyAnthropic', ''),
+    gemini:  await getImpostazione('apiKeyGemini', ''),
+    chatgpt: await getImpostazione('apiKeyOpenAI', ''),
+  };
+  return {
+    provider,
+    hasKey: !!keyMap[provider],
+    label: { claude:'Claude', gemini:'Gemini', chatgpt:'ChatGPT' }[provider] || provider,
+    avatar: { claude:'🟠', gemini:'🔵', chatgpt:'🟢' }[provider] || '🤖',
+  };
+}
