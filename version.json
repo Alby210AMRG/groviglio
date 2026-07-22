@@ -1,5 +1,5 @@
 {
-  "version": "1.1.1",
+  "version": "1.1.2",
   "date": "2025-01-08",
-  "changelog": "Hotfix: fix import filtraElementi, SW cache forzata"
+  "changelog": "Recovery automatica senza perdita dati + sezione Help nelle impostazioni"
 }
