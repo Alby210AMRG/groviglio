@@ -175,7 +175,7 @@ Rispondi sempre in italiano. Usa il markdown per formattare le risposte.`;
   }
 
   if (!_usaInternet) {
-    return basePrompt + '\n\nATTENZIONE: L'utente non ha selezionato appunti come contesto. Avvisalo gentilmente e suggeriscigli di attivare "📖 Appunti" per poter rispondere basandosi sui suoi dati.';
+    return basePrompt + `\n\nATTENZIONE: L'utente non ha selezionato appunti come contesto. Attiva 📖 Appunti per basarmi sui tuoi dati.`;
   }
 
   return basePrompt + '\n\nRispondi usando la tua conoscenza generale.';
