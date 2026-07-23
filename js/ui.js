@@ -13,7 +13,7 @@ import { initChat, populaListaContesto, setProvider, testaConnessioni, formattaI
 import { esportaJSON, importaJSON } from './export.js';
 import { backupManuale, setFrequenzaBackup } from './backup.js';
 import { VERSIONE_LOCALE } from './updater.js';
-import { log, logModifica, getLog, getUltimeModifiche, cancellaLog, logComeTesto, renderLogHTML, renderUltimeModHTML } from './logger.js';
+import { log, logModifica, getLog, getUltimeModifiche, cancellaLog, logComeTesto, reloadLogFromDB, renderLogHTML, renderUltimeModHTML } from './logger.js';
 import { initTreeView, renderAlbero } from './tree.js';
 import { initTableView, renderTabella } from './tableview.js';
 import { getIcona, renderIconPicker, TIPO_ICONA_DEFAULT } from './icons.js';
@@ -1467,6 +1467,9 @@ function apriBottomSheetCrea() {
    IMPOSTAZIONI
 ═══════════════════════════════════════════════════════════ */
 async function renderImpostazioni() {
+  // Ricarica log e ultime modifiche freschi da IndexedDB
+  await reloadLogFromDB();
+
   const providerAI    = await getImpostazione('providerAI', 'claude');
   const apiClaude     = await getImpostazione('apiKeyAnthropic', '');
   const apiGemini     = await getImpostazione('apiKeyGemini', '');
@@ -1487,7 +1490,7 @@ async function renderImpostazioni() {
 
       <!-- Aspetto -->
       <div class="settings-section">
-        <div class="settings-section-title">🎨 Aspetto</div>
+        <div class="settings-section-title" data-accordion="aspetto">🎨 Aspetto</div>
 
         <div class="settings-item">
           <div class="settings-item-icon">🌓</div>
@@ -1523,7 +1526,7 @@ async function renderImpostazioni() {
 
       <!-- AI -->
       <div class="settings-section">
-        <div class="settings-section-title">🤖 Intelligenza Artificiale</div>
+        <div class="settings-section-title" data-accordion="ai">🤖 Intelligenza Artificiale</div>
 
         <div class="settings-item">
           <div class="settings-item-icon">🧠</div>
@@ -1626,7 +1629,7 @@ async function renderImpostazioni() {
 
       <!-- Backup -->
       <div class="settings-section">
-        <div class="settings-section-title">💾 Backup & Dati</div>
+        <div class="settings-section-title" data-accordion="backup">💾 Backup & Dati</div>
 
         <div class="settings-item">
           <div class="settings-item-icon">⏰</div>
@@ -1684,31 +1687,36 @@ async function renderImpostazioni() {
 
       <!-- Ultime modifiche -->
       <div class="settings-section">
-        <div class="settings-section-title" style="display:flex;align-items:center;justify-content:space-between">
+        <div class="settings-section-title acc-closed" data-accordion="ultimeMod"
+          style="display:flex;align-items:center;justify-content:space-between">
           <span>🕐 Ultime modifiche (${getUltimeModifiche().length}/250)</span>
         </div>
+        <div class="settings-section-body" style="display:none">
         <div id="ultime-mod-list" style="max-height:260px;overflow-y:auto">
           ${renderUltimeModHTML(getUltimeModifiche())}
+        </div>
         </div>
       </div>
 
       <!-- Log eventi -->
       <div class="settings-section">
-        <div class="settings-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div class="settings-section-title acc-closed" data-accordion="log"
+          style="display:flex;align-items:center;justify-content:space-between;gap:8px">
           <span>📋 Log eventi (${getLog().length}/250)</span>
-          <div style="display:flex;gap:6px">
+          <div style="display:flex;gap:6px" onclick="event.stopPropagation()">
             <button id="btn-copia-log" style="
               background:none;border:1px solid var(--border);color:var(--text-secondary);
               font-size:.65rem;cursor:pointer;font-family:var(--font-ui);padding:2px 8px;
               border-radius:4px;transition:all var(--transition)
-            ">📋 Copia tutto</button>
+            ">📋 Copia</button>
             <button id="btn-cancella-log" style="
               background:none;border:1px solid var(--border);color:var(--text-muted);
               font-size:.65rem;cursor:pointer;font-family:var(--font-ui);padding:2px 8px;
               border-radius:4px;
-            ">🗑️ Cancella</button>
+            ">🗑️</button>
           </div>
         </div>
+        <div class="settings-section-body" style="display:none">
         <div id="log-container" style="max-height:240px;overflow-y:auto">
           ${renderLogHTML(getLog(50))}
         </div>
@@ -1719,11 +1727,12 @@ async function renderImpostazioni() {
             Mostra tutte le ${getLog().length} voci
           </button>
         </div>` : ''}
+        </div>
       </div>
 
       <!-- Help -->
       <div class="settings-section">
-        <div class="settings-section-title">❓ Come funziona Groviglio</div>
+        <div class="settings-section-title" data-accordion="help">❓ Come funziona Groviglio</div>
         <div style="padding:16px;display:flex;flex-direction:column;gap:20px">
 
           <!-- Gerarchia -->
@@ -1843,7 +1852,7 @@ async function renderImpostazioni() {
 
       <!-- Info -->
       <div class="settings-section">
-        <div class="settings-section-title">ℹ️ Informazioni</div>
+        <div class="settings-section-title" data-accordion="info">ℹ️ Informazioni</div>
         <div class="settings-item">
           <div class="settings-item-icon">🦊</div>
           <div class="settings-item-info">
@@ -1876,6 +1885,46 @@ async function renderImpostazioni() {
 
   // Wiring impostazioni
   setupImpostazioniListeners();
+
+  // ── Accordion: sezioni collassabili ───────────────────────
+  initAccordion();
+}
+
+function initAccordion() {
+  // Funziona su due pattern:
+  // 1. .settings-section-title[data-accordion] con .settings-section-body fratello
+  // 2. .settings-section-title[data-accordion] — toggle tutti i .settings-item fratelli
+  document.querySelectorAll('.settings-section-title[data-accordion]').forEach(header => {
+    const key     = header.dataset.accordion;
+    const section = header.closest('.settings-section');
+    if (!section) return;
+
+    const body = section.querySelector('.settings-section-body');
+    // Se non c'è .settings-section-body, togla tutti gli item fratelli
+    const targets = body
+      ? [body]
+      : Array.from(section.querySelectorAll('.settings-item, .settings-section-body, #test-api-risultati'));
+
+    if (!targets.length) return;
+
+    // Stato iniziale: closed se classe acc-closed presente
+    const startClosed = header.classList.contains('acc-closed');
+    if (startClosed) {
+      targets.forEach(t => t.style.display = 'none');
+    }
+
+    header.style.cursor = 'pointer';
+
+    header.addEventListener('click', (e) => {
+      // Ignora click sui bottoni figli (es. copia/cancella log)
+      if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+
+      const isClosed = header.classList.contains('acc-closed');
+      targets.forEach(t => t.style.display = isClosed ? '' : 'none');
+      header.classList.toggle('acc-closed', !isClosed);
+      sessionStorage.setItem(`acc_${key}`, isClosed ? 'true' : 'false');
+    });
+  });
 }
 
 function setupImpostazioniListeners() {
