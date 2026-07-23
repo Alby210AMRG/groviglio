@@ -8,16 +8,18 @@ let _elementi = [];
 let _modalApriElemento = null;
 
 const TIPO_COLORI = {
-  nota:     '#4F7BF7',
-  idea:     '#F5A623',
-  progetto: '#36D399',
-  task:     '#B57BEE',
+  macroprogetto: '#FF4500',
+  nota:          '#4F7BF7',
+  idea:          '#F5A623',
+  progetto:      '#36D399',
+  task:          '#B57BEE',
 };
 
 const TIPO_ICONE = {
-  nota:     '📝',
-  idea:     '💡',
-  progetto: '📁',
+  macroprogetto: '🏛️',
+  nota:          '📝',
+  idea:          '💡',
+  progetto:      '📁',
   task:     '✅',
 };
 
@@ -239,6 +241,20 @@ function buildStile() {
     },
 
     // ── Stili per tipo ─────────────────────────────────────
+    // Macroprogetto: stella — top-level, massima visibilità
+    {
+      selector: 'node[tipo="macroprogetto"]',
+      style: {
+        'shape':          'star',
+        'border-width':   4,
+        'border-opacity': 1,
+        'shadow-blur':    30,
+        'shadow-opacity': 0.8,
+        'font-size':      14,
+        'font-weight':    800,
+      }
+    },
+
     // Progetto: forma rettangolare arrotondata
     {
       selector: 'node[tipo="progetto"]',
