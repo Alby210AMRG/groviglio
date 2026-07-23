@@ -427,6 +427,34 @@
               <!-- Popolato da JS -->
             </div>
 
+            <!-- Toggle Appunti / Internet -->
+            <div style="padding:8px 20px 0;display:flex;gap:8px;flex-shrink:0">
+              <button id="chat-toggle-appunti" type="button" style="
+                display:flex;align-items:center;gap:5px;
+                padding:5px 12px;border-radius:99px;
+                border:1px solid var(--border);
+                background:var(--accent-blue);color:#fff;font-weight:700;
+                font-family:var(--font-ui);font-size:.72rem;cursor:pointer;
+                transition:all var(--transition)
+              ">
+                📖 Appunti
+              </button>
+              <button id="chat-toggle-internet" type="button" style="
+                display:flex;align-items:center;gap:5px;
+                padding:5px 12px;border-radius:99px;
+                border:1px solid var(--border);
+                background:var(--surface-3);color:var(--text-muted);font-weight:500;
+                font-family:var(--font-ui);font-size:.72rem;cursor:pointer;
+                transition:all var(--transition)
+              ">
+                🌐 Generale
+              </button>
+              <div style="margin-left:auto;font-size:.65rem;color:var(--text-muted);
+                display:flex;align-items:center">
+                📖 = usa i tuoi appunti &nbsp;·&nbsp; 🌐 = conoscenza esterna
+              </div>
+            </div>
+
             <!-- Quick actions -->
             <div class="chat-quick-actions">
               <button class="quick-action-btn" data-prompt="Riassumi tutti i miei appunti">
