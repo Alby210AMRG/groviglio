@@ -3038,3 +3038,35 @@ body {
   border-color: var(--type-macroprogetto);
   color: var(--type-macroprogetto);
 }
+
+/* ── Accordion impostazioni ───────────────────────────────── */
+.settings-section-title[data-accordion] {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 28px;
+  transition: background var(--transition);
+}
+
+.settings-section-title[data-accordion]::after {
+  content: '▼';
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: .6rem;
+  color: var(--text-muted);
+  transition: transform var(--transition);
+}
+
+.settings-section-title[data-accordion].acc-closed::after {
+  transform: translateY(-50%) rotate(-90deg);
+}
+
+.settings-section-title[data-accordion]:hover {
+  background: var(--surface-hover);
+}
+
+.settings-section-body {
+  overflow: hidden;
+}
