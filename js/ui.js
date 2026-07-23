@@ -13,7 +13,7 @@ import { initChat, populaListaContesto, setProvider, testaConnessioni, formattaI
 import { esportaJSON, importaJSON } from './export.js';
 import { backupManuale, setFrequenzaBackup } from './backup.js';
 import { VERSIONE_LOCALE } from './updater.js';
-import { log, logModifica, getLog, getUltimeModifiche, cancellaLog, logComeTesto, reloadLogFromDB, renderLogHTML, renderUltimeModHTML } from './logger.js';
+import { log, logModifica, getLog, getUltimeModifiche, cancellaLog, logComeTesto, renderLogHTML, renderUltimeModHTML } from './logger.js';
 import { initTreeView, renderAlbero } from './tree.js';
 import { initTableView, renderTabella } from './tableview.js';
 import { getIcona, renderIconPicker, TIPO_ICONA_DEFAULT } from './icons.js';
@@ -1467,8 +1467,10 @@ function apriBottomSheetCrea() {
    IMPOSTAZIONI
 ═══════════════════════════════════════════════════════════ */
 async function renderImpostazioni() {
-  // Ricarica log e ultime modifiche freschi da IndexedDB
-  await reloadLogFromDB();
+  // Legge direttamente da IndexedDB per avere dati freschi
+  // (evita dipendenza dalla cache in-memoria del logger)
+  const modFreschi = (await getImpostazione('ultimeMod', [])) || [];
+  const logFreschi = (await getImpostazione('eventLog',  [])) || [];
 
   const providerAI    = await getImpostazione('providerAI', 'claude');
   const apiClaude     = await getImpostazione('apiKeyAnthropic', '');
@@ -1689,11 +1691,11 @@ async function renderImpostazioni() {
       <div class="settings-section">
         <div class="settings-section-title acc-closed" data-accordion="ultimeMod"
           style="display:flex;align-items:center;justify-content:space-between">
-          <span>🕐 Ultime modifiche (${getUltimeModifiche().length}/250)</span>
+          <span>🕐 Ultime modifiche (${modFreschi.length}/250)</span>
         </div>
         <div class="settings-section-body" style="display:none">
         <div id="ultime-mod-list" style="max-height:260px;overflow-y:auto">
-          ${renderUltimeModHTML(getUltimeModifiche())}
+          ${renderUltimeModHTML(modFreschi)}
         </div>
         </div>
       </div>
@@ -1702,7 +1704,7 @@ async function renderImpostazioni() {
       <div class="settings-section">
         <div class="settings-section-title acc-closed" data-accordion="log"
           style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <span>📋 Log eventi (${getLog().length}/250)</span>
+          <span>📋 Log eventi (${logFreschi.length}/250)</span>
           <div style="display:flex;gap:6px" onclick="event.stopPropagation()">
             <button id="btn-copia-log" style="
               background:none;border:1px solid var(--border);color:var(--text-secondary);
@@ -1718,13 +1720,13 @@ async function renderImpostazioni() {
         </div>
         <div class="settings-section-body" style="display:none">
         <div id="log-container" style="max-height:240px;overflow-y:auto">
-          ${renderLogHTML(getLog(50))}
+          ${renderLogHTML(logFreschi.slice(0,50))}
         </div>
-        ${getLog().length > 50 ? `
+        ${logFreschi.length > 50 ? `
         <div style="padding:8px 14px;border-top:1px solid var(--border)">
           <button class="btn btn-secondary" id="btn-log-tutti"
             style="width:100%;font-size:.72rem;padding:6px">
-            Mostra tutte le ${getLog().length} voci
+            Mostra tutte le ${logFreschi.length} voci
           </button>
         </div>` : ''}
         </div>
