@@ -16,6 +16,7 @@ export const TUTTI_ICONE = Object.values(ICON_CATS).flat();
 
 /** Icona default per tipo (se nessuna icona custom) */
 export const TIPO_ICONA_DEFAULT = {
+  macroprogetto: '🏛️',
   nota:     '📝',
   idea:     '💡',
   progetto: '📁',
