@@ -8,17 +8,16 @@ import { mostraToast } from './ui.js';
 import { log } from './logger.js';
 
 /* ─── Stato ───────────────────────────────────────────────── */
-let _provider   = 'claude';    // claude | gemini | chatgpt
-let _sessione   = 'default';
-let _contesto   = [];          // elementi selezionati come contesto
-let _isLoading  = false;
+let _provider    = 'claude';
+let _sessione    = 'default';
+let _contesto    = [];
+let _isLoading   = false;
+let _usaAppunti  = true;   // usa le note come contesto
+let _usaInternet = false;  // usa conoscenza generale esterna
 
-const AVATAR = {
-  claude:  '🟠',
-  gemini:  '🔵',
-  chatgpt: '🟢',
-  user:    '👤',
-};
+const AVATAR_AI = `<img src="/groviglio/icons/icon-72.png"
+  style="width:100%;height:100%;border-radius:50%;object-fit:cover" alt="Groviglio AI">`;
+const AVATAR_USER = '👤';
 
 const PROVIDER_LABEL = {
   claude:  'Claude',
@@ -143,7 +142,7 @@ async function chiamaAI(testo) {
 
 /* ─── System prompt contestuale ──────────────────────────── */
 function buildContesto() {
-  if (!_contesto.length) return '';
+  if (!_usaAppunti || !_contesto.length) return '';
 
   const desc = _contesto
     .map(el =>
@@ -152,21 +151,34 @@ function buildContesto() {
     )
     .join('\n\n---\n\n');
 
-  return `\n\n## CONTESTO APPUNTI SELEZIONATI:\n${desc}`;
+  return `\n\n## I TUOI APPUNTI (usa questi come fonte principale):\n${desc}`;
 }
 
 function buildSystemPrompt(contesto) {
-  return `Sei un assistente integrato in Groviglio, una web app per la gestione di appunti, idee, progetti e task organizzati come un grafo.
+  const basePrompt = `Sei un assistente integrato in Groviglio, l'app personale dell'utente per gestire appunti, idee, progetti e task.
 
 Puoi aiutare l'utente a:
 - Rispondere a domande sui suoi appunti
-- Riassumere note e idee
+- Riassumere note e idee  
 - Suggerire collegamenti tra elementi correlati
-- Creare nuove note (rispondi con formato JSON se richiesto)
+- Creare nuove note
 - Generare idee e sviluppare concetti
 - Analizzare progetti e task
 
-Rispondi sempre in italiano. Sii conciso ma completo. Usa il markdown per formattare le risposte.${contesto}`;
+Rispondi sempre in italiano. Usa il markdown per formattare le risposte.`;
+
+  if (_usaAppunti && contesto) {
+    const modoKnowledge = _usaInternet
+      ? 'Usa gli appunti come fonte principale, puoi integrare con la tua conoscenza generale se utile.'
+      : 'Basati PRINCIPALMENTE sugli appunti forniti. Usa la tua conoscenza generale solo per spiegare o contestualizzare concetti presenti negli appunti.';
+    return basePrompt + `\n\n${modoKnowledge}` + contesto;
+  }
+
+  if (!_usaInternet) {
+    return basePrompt + '\n\nATTENZIONE: L'utente non ha selezionato appunti come contesto. Avvisalo gentilmente e suggeriscigli di attivare "📖 Appunti" per poter rispondere basandosi sui suoi dati.';
+  }
+
+  return basePrompt + '\n\nRispondi usando la tua conoscenza generale.';
 }
 
 /* ─── Claude API ──────────────────────────────────────────── */
@@ -284,7 +296,7 @@ function aggiungiBolla(msg) {
 
   const avatar = document.createElement('div');
   avatar.className = 'chat-avatar';
-  avatar.textContent = msg.role === 'user' ? AVATAR.user : AVATAR[_provider];
+  if (msg.role === 'user') { avatar.textContent = AVATAR_USER; } else { avatar.innerHTML = AVATAR_AI; }
 
   const bubble = document.createElement('div');
   bubble.className = 'chat-bubble';
@@ -315,7 +327,7 @@ function mostraTyping() {
 
   const avatar = document.createElement('div');
   avatar.className = 'chat-avatar';
-  avatar.textContent = AVATAR[_provider];
+  avatar.innerHTML = AVATAR_AI;
 
   const bubble = document.createElement('div');
   bubble.className = 'chat-bubble';
@@ -682,4 +694,27 @@ export async function getProviderStatus() {
     label: { claude:'Claude', gemini:'Gemini', chatgpt:'ChatGPT' }[provider] || provider,
     avatar: { claude:'🟠', gemini:'🔵', chatgpt:'🟢' }[provider] || '🤖',
   };
+}
+
+/* ─── Toggle Appunti / Internet ───────────────────────────── */
+
+export function setUsaAppunti(val) {
+  _usaAppunti = val;
+  log(`Contesto appunti: ${val ? 'attivo' : 'disattivo'}`, 'ai');
+}
+
+export function setUsaInternet(val) {
+  _usaInternet = val;
+  log(`Conoscenza generale: ${val ? 'attiva' : 'disattiva'}`, 'ai');
+}
+
+export function getToggleState() {
+  return { usaAppunti: _usaAppunti, usaInternet: _usaInternet };
+}
+
+/** Imposta il contesto automaticamente con tutti gli elementi */
+export function setContenutoContenutoAuto(elementi) {
+  if (_usaAppunti) {
+    _contesto = elementi || [];
+  }
 }
