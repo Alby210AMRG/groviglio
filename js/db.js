@@ -110,6 +110,7 @@ export async function creaElemento(dati) {
 
 function statoDefault(tipo) {
   switch (tipo) {
+    case 'macroprogetto': return 'attivo';
     case 'progetto': return 'attivo';
     case 'idea':     return 'bozza';
     case 'task':     return 'da_fare';
@@ -318,10 +319,11 @@ export async function resetDB() {
 export async function contaElementi() {
   const tutti = await getElementi();
   return {
-    totale:   tutti.length,
-    nota:     tutti.filter(e => e.tipo === 'nota').length,
-    idea:     tutti.filter(e => e.tipo === 'idea').length,
-    progetto: tutti.filter(e => e.tipo === 'progetto').length,
-    task:     tutti.filter(e => e.tipo === 'task').length,
+    totale:        tutti.length,
+    macroprogetto: tutti.filter(e => e.tipo === 'macroprogetto').length,
+    nota:          tutti.filter(e => e.tipo === 'nota').length,
+    idea:          tutti.filter(e => e.tipo === 'idea').length,
+    progetto:      tutti.filter(e => e.tipo === 'progetto').length,
+    task:          tutti.filter(e => e.tipo === 'task').length,
   };
 }
