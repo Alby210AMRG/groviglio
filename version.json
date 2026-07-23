@@ -1,5 +1,5 @@
 {
-  "version": "1.1.7",
-  "date": "2025-01-09",
-  "changelog": "Hotfix: rimosso import reloadLogFromDB, lettura DB diretta in impostazioni"
+  "version": "1.1.8",
+  "date": "2025-01-10",
+  "changelog": "Impostazioni tutte collassate, avatar logo chat, toggle Appunti/Generale"
 }
