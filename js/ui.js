@@ -9,7 +9,7 @@ import {
   getImpostazione, setImpostazione, resetDB
 } from './db.js';
 import { initGrafo, aggiornaGrafo, evidenziaNodo } from './graph.js';
-import { initChat, populaListaContesto, setProvider, testaConnessioni, formattaInMarkdown, getProviderStatus } from './ai.js';
+import { initChat, populaListaContesto, setProvider, testaConnessioni, formattaInMarkdown, getProviderStatus, setUsaAppunti, setUsaInternet, getToggleState, setContenutoContenutoAuto } from './ai.js';
 import { esportaJSON, importaJSON } from './export.js';
 import { backupManuale, setFrequenzaBackup } from './backup.js';
 import { VERSIONE_LOCALE } from './updater.js';
@@ -340,7 +340,11 @@ async function renderGrafo() {
 ═══════════════════════════════════════════════════════════ */
 async function renderChat() {
   await initChat();
+  // Carica automaticamente TUTTE le note come contesto
+  setContenutoContenutoAuto(stato.elementi);
   await populaListaContesto(stato.elementi);
+  // Setup toggle buttons
+  setupChatToggles();
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1466,6 +1470,38 @@ function apriBottomSheetCrea() {
 /* ═══════════════════════════════════════════════════════════
    IMPOSTAZIONI
 ═══════════════════════════════════════════════════════════ */
+function setupChatToggles() {
+  const btnAppunti  = document.getElementById('chat-toggle-appunti');
+  const btnInternet = document.getElementById('chat-toggle-internet');
+  if (!btnAppunti || !btnInternet) return;
+
+  function aggiornaBtnStyle(btn, attivo, coloreOn) {
+    btn.style.background  = attivo ? coloreOn : 'var(--surface-3)';
+    btn.style.borderColor = attivo ? coloreOn : 'var(--border)';
+    btn.style.color       = attivo ? '#fff' : 'var(--text-muted)';
+    btn.style.fontWeight  = attivo ? '700' : '500';
+  }
+
+  let { usaAppunti, usaInternet } = getToggleState();
+  aggiornaBtnStyle(btnAppunti,  usaAppunti,  'var(--accent-blue)');
+  aggiornaBtnStyle(btnInternet, usaInternet, 'var(--success)');
+
+  btnAppunti.addEventListener('click', () => {
+    usaAppunti = !usaAppunti;
+    setUsaAppunti(usaAppunti);
+    if (usaAppunti) setContenutoContenutoAuto(stato.elementi);
+    aggiornaBtnStyle(btnAppunti, usaAppunti, 'var(--accent-blue)');
+    mostraToast(usaAppunti ? '📖 Appunti attivati' : '📖 Appunti disattivati', 'info');
+  });
+
+  btnInternet.addEventListener('click', () => {
+    usaInternet = !usaInternet;
+    setUsaInternet(usaInternet);
+    aggiornaBtnStyle(btnInternet, usaInternet, 'var(--success)');
+    mostraToast(usaInternet ? '🌐 Conoscenza generale attiva' : '🌐 Solo appunti', 'info');
+  });
+}
+
 async function renderImpostazioni() {
   // Legge direttamente da IndexedDB per avere dati freschi
   // (evita dipendenza dalla cache in-memoria del logger)
@@ -1893,38 +1929,29 @@ async function renderImpostazioni() {
 }
 
 function initAccordion() {
-  // Funziona su due pattern:
-  // 1. .settings-section-title[data-accordion] con .settings-section-body fratello
-  // 2. .settings-section-title[data-accordion] — toggle tutti i .settings-item fratelli
   document.querySelectorAll('.settings-section-title[data-accordion]').forEach(header => {
     const key     = header.dataset.accordion;
     const section = header.closest('.settings-section');
     if (!section) return;
 
-    const body = section.querySelector('.settings-section-body');
-    // Se non c'è .settings-section-body, togla tutti gli item fratelli
-    const targets = body
-      ? [body]
-      : Array.from(section.querySelectorAll('.settings-item, .settings-section-body, #test-api-risultati'));
+    // Target: TUTTI i figli della section tranne il titolo stesso
+    // Funziona indipendentemente dalla struttura interna (settings-item, divs, ecc.)
+    const children = Array.from(section.children).filter(c => c !== header);
+    if (!children.length) return;
 
-    if (!targets.length) return;
-
-    // Stato iniziale: closed se classe acc-closed presente
-    const startClosed = header.classList.contains('acc-closed');
-    if (startClosed) {
-      targets.forEach(t => t.style.display = 'none');
-    }
+    // Tutte le sezioni chiuse di default
+    children.forEach(c => { c.style.display = 'none'; });
+    header.classList.add('acc-closed');
 
     header.style.cursor = 'pointer';
 
     header.addEventListener('click', (e) => {
-      // Ignora click sui bottoni figli (es. copia/cancella log)
+      // Ignora click su bottoni interni (es. copia/cancella log)
       if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
 
       const isClosed = header.classList.contains('acc-closed');
-      targets.forEach(t => t.style.display = isClosed ? '' : 'none');
+      children.forEach(c => { c.style.display = isClosed ? '' : 'none'; });
       header.classList.toggle('acc-closed', !isClosed);
-      sessionStorage.setItem(`acc_${key}`, isClosed ? 'true' : 'false');
     });
   });
 }
