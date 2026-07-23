@@ -47,6 +47,8 @@
   --accent-blue-dim: rgba(79,123,247,.15);
   --accent-orange: #F47C3C;
   --accent-orange-dim: rgba(244,124,60,.15);
+  --type-macroprogetto: #FF4500;
+  --type-macroprogetto-dim: rgba(255,69,0,.15);
   --type-nota: #4F7BF7;
   --type-idea: #F5A623;
   --type-progetto: #36D399;
@@ -89,6 +91,8 @@
   --accent-blue-dim: rgba(45,85,232,.1);
   --accent-orange: #E05E18;
   --accent-orange-dim: rgba(224,94,24,.1);
+  --type-macroprogetto: #D93800;
+  --type-macroprogetto-dim: rgba(217,56,0,.1);
   --type-nota: #2D55E8;
   --type-idea: #D4880A;
   --type-progetto: #0E9B6A;
@@ -134,6 +138,8 @@
   --accent-blue-dim: rgba(139,233,253,.12);
   --accent-orange: #FFB86C;
   --accent-orange-dim: rgba(255,184,108,.12);
+  --type-macroprogetto: #FF6E6E;
+  --type-macroprogetto-dim: rgba(255,110,110,.15);
   --type-nota: #8BE9FD;
   --type-idea: #FFB86C;
   --type-progetto: #50FA7B;
@@ -3013,4 +3019,22 @@ body {
   .data-table { font-size: .72rem; }
   .data-table td, .data-table th { padding: 6px 8px; }
   .cell-macroprogetto { display: none; }
+}
+
+/* ── Macroprogetto card ─────────────────────────────────── */
+.card[data-type="macroprogetto"] { --type-color: var(--type-macroprogetto); }
+.card[data-type="macroprogetto"] .card-type-icon {
+  background: var(--type-macroprogetto-dim);
+}
+
+.type-btn.active[data-type="macroprogetto"] {
+  border-color: var(--type-macroprogetto);
+  background: var(--type-macroprogetto-dim);
+  color: var(--type-macroprogetto);
+}
+
+.chip.type-macroprogetto.active {
+  background: var(--type-macroprogetto-dim);
+  border-color: var(--type-macroprogetto);
+  color: var(--type-macroprogetto);
 }
