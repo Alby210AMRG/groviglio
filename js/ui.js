@@ -539,11 +539,11 @@ function formHTML(el) {
         <!-- Icon picker -->
         <div id="icon-picker-container"></div>
         <!-- Tipo selector -->
-        <div class="type-selector" style="flex:1">
-          ${['nota','idea','progetto','task'].map(t => `
+        <div class="type-selector" style="flex:1;grid-template-columns:repeat(5,1fr)">
+          ${['macroprogetto','nota','idea','progetto','task'].map(t => `
             <button class="type-btn ${el.tipo === t ? 'active' : ''}" data-type="${t}">
               <span class="type-btn-icon">${TIPO_ICONA_DEFAULT[t]}</span>
-              ${t.charAt(0).toUpperCase() + t.slice(1)}
+              ${{macroprogetto:'Macro',nota:'Nota',idea:'Idea',progetto:'Progetto',task:'Task'}[t]}
             </button>`).join('')}
         </div>
       </div>
@@ -1871,7 +1871,7 @@ async function renderImpostazioni() {
   contaElementi().then(c => {
     const el = document.getElementById('db-stats');
     if (el) el.textContent =
-      `${c.totale} elementi totali · ${c.nota} note · ${c.idea} idee · ${c.progetto} progetti · ${c.task} task`;
+      `${c.totale} totali · ${c.macroprogetto||0} macro · ${c.nota} note · ${c.idea} idee · ${c.progetto} progetti · ${c.task} task`;
   });
 
   // Wiring impostazioni
@@ -2107,11 +2107,12 @@ function chiudiSidebarMobile() {
 async function aggiornaBadgeSidebar() {
   const c = await contaElementi();
   const badgeMap = {
-    'badge-totale':   c.totale,
-    'badge-nota':     c.nota,
-    'badge-idea':     c.idea,
-    'badge-progetto': c.progetto,
-    'badge-task':     c.task,
+    'badge-totale':        c.totale,
+    'badge-macroprogetto': c.macroprogetto || 0,
+    'badge-nota':          c.nota,
+    'badge-idea':          c.idea,
+    'badge-progetto':      c.progetto,
+    'badge-task':          c.task,
   };
   Object.entries(badgeMap).forEach(([id, val]) => {
     const el = document.getElementById(id);
@@ -2176,11 +2177,11 @@ function setupToast() {
    UTILITÀ
 ═══════════════════════════════════════════════════════════ */
 function tipoIcon(tipo) {
-  return { nota: '📝', idea: '💡', progetto: '📁', task: '✅' }[tipo] || '📄';
+  return { macroprogetto:'🏛️', nota: '📝', idea: '💡', progetto: '📁', task: '✅' }[tipo] || '📄';
 }
 
 function tipoColore(tipo) {
-  return { nota: '#4F7BF7', idea: '#F5A623', progetto: '#36D399', task: '#B57BEE' }[tipo] || '#4F7BF7';
+  return { macroprogetto:'#FF4500', nota: '#4F7BF7', idea: '#F5A623', progetto: '#36D399', task: '#B57BEE' }[tipo] || '#4F7BF7';
 }
 
 function escapeHTML(str) {
