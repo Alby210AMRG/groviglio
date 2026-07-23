@@ -192,3 +192,13 @@ function _dataRel(d) {
   if (h < 24)   return `${h}h fa`;
   return `${Math.floor(h/24)}g fa`;
 }
+
+/* ─── Ricarica da DB (per settings refresh) ───────────────── */
+export async function reloadLogFromDB() {
+  try {
+    _log = (await getImpostazione(KEY_LOG, [])) || [];
+    _mod = (await getImpostazione(KEY_MOD, [])) || [];
+  } catch(e) {
+    console.warn('[Logger] reloadFromDB fallito:', e);
+  }
+}
