@@ -184,7 +184,7 @@ async function chiamaClaude(testo, storico, contesto) {
     },
     body: JSON.stringify({
       model:      'claude-opus-4-5',
-      max_tokens: 1500,
+      max_tokens: 4096,
       system:     buildSystemPrompt(contesto),
       messages: [
         ...storico,
@@ -226,7 +226,7 @@ async function chiamaGemini(testo, storico, contesto) {
         systemInstruction: { parts: [{ text: buildSystemPrompt(contesto) }] },
         contents,
         generationConfig: {
-          maxOutputTokens: 1500,
+          maxOutputTokens: 8192,
           temperature: 0.7,
         },
       }),
@@ -255,7 +255,7 @@ async function chiamaChatGPT(testo, storico, contesto) {
     },
     body: JSON.stringify({
       model: 'gpt-4o-mini',
-      max_tokens: 1500,
+      max_tokens: 4096,
       messages: [
         { role: 'system', content: buildSystemPrompt(contesto) },
         ...storico,
