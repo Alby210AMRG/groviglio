@@ -26,9 +26,9 @@
   <link rel="apple-touch-icon" sizes="144x144" href="/groviglio/icons/icon-144.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/x-icon" href="/groviglio/icons/favicon.ico">
-  <link rel="icon" type="image/png" sizes="32x32" href="/groviglio/icons/icon-96.png">
-  <link rel="shortcut icon" href="/groviglio/icons/favicon.ico">
+  <link rel="icon" type="image/x-icon" href="/groviglio/icons/favicon.ico?v=1.1.5">
+  <link rel="icon" type="image/png" sizes="32x32" href="/groviglio/icons/icon-96.png?v=1.1.5">
+  <link rel="shortcut icon" href="/groviglio/icons/favicon.ico?v=1.1.5">
 
   <!-- Recovery screen styles (inline - funziona anche se CSS principale fallisce) -->
   <style>
@@ -217,6 +217,12 @@
       <!-- Filtri tipo -->
       <div class="nav-section-label" style="margin-top:8px">Filtra per tipo</div>
 
+      <button class="nav-item" data-view="elenco" data-filter-tipo="macroprogetto">
+        <span>🏛️</span>
+        Macroprogetti
+        <span class="nav-item-badge" id="badge-macroprogetto">0</span>
+      </button>
+
       <button class="nav-item" data-view="elenco" data-filter-tipo="nota">
         <span>📝</span>
         Note
@@ -301,6 +307,7 @@
         <!-- Toolbar filtri -->
         <div class="list-toolbar">
           <div class="filter-chips">
+            <div class="chip type-macroprogetto" data-filter-tipo="macroprogetto">🏛️ Macro</div>
             <div class="chip type-nota" data-filter-tipo="nota">📝 Note</div>
             <div class="chip type-idea" data-filter-tipo="idea">💡 Idee</div>
             <div class="chip type-progetto" data-filter-tipo="progetto">📁 Progetti</div>
@@ -546,7 +553,18 @@
       <span class="modal-title">Cosa vuoi creare?</span>
       <button class="btn-icon modal-close">✕</button>
     </div>
-    <div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+
+      <button class="type-btn" data-crea-tipo="macroprogetto"
+        style="padding:18px;gap:10px;flex-direction:column;font-size:.85rem;
+          border-color:var(--type-macroprogetto);background:var(--type-macroprogetto-dim);
+          color:var(--type-macroprogetto)">
+        <span style="font-size:1.8rem">🏛️</span>
+        <span style="font-weight:700">Macroprogetto</span>
+        <span style="font-size:.65rem;font-weight:400;text-align:center;color:inherit;opacity:.8">
+          Contenitore di alto livello
+        </span>
+      </button>
 
       <button class="type-btn" data-crea-tipo="nota"
         style="padding:18px;gap:10px;flex-direction:column;font-size:.85rem">
